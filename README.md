@@ -32,7 +32,7 @@
 | قواعد الأمان | منشورة من [firestore.rules](firestore.rules) |
 | المحتوى السحابي | **6 أخبار + 4 إعلانات + مكتبة فارغة** |
 | رابط المدرسة | `https://alfarooqom.com/` |
-| الاستضافة | **Vercel** — نشر مبدئي عبر رابط مؤقت يُثبَّت عند استلامه |
+| الاستضافة | **Vercel** — `https://alfarooq-library.vercel.app/` |
 
 > كلمة مرور حساب الإدارة **لا تُخزَّن في أي ملف** داخل المشروع. تُدار من وحدة تحكم Firebase أو من خلال رسالة التسليم الخاصة بك.
 
@@ -83,11 +83,11 @@
 
 ### استضافة Vercel
 
-- الموقع ثابت (HTML/CSS/JS) ولا يحتاج أمر بناء. يكفي نشر مجلد المشروع كما هو.
-- النشر من GitHub: اربط مستودع `3jg5/school-site` بـ Vercel ثم **Deploy**.
+- الموقع منشور على: `https://alfarooq-library.vercel.app/`
+- الموقع ثابت (HTML/CSS/JS) ولا يحتاج أمر بناء. النشر يتم تلقائياً من مستودع `3jg5/school-site` عند كل رفع إلى GitHub.
 - التحديثات اللاحقة: ارفع الملفات إلى GitHub وسيُعاد النشر تلقائياً.
-- بعد تثبيت النشر، أضف نطاق Vercel النهائي إلى:
-  1. **Firebase ← Authentication ← Settings ← Authorized domains** حتى يعمل تسجيل الدخول.
+- أضف نطاق Vercel إلى:
+  1. **Firebase ← Authentication ← Settings ← Authorized domains** حتى تعمل عمليات الدخول المرتبطة بالنطاق.
   2. **Cloudinary ← Settings ← Security** إن فعّلت تقييد النطاقات هناك (اختياري).
 - أي نطاق مخصص جديد (مثل `alfarooqom.com`) يحتاج إضافة النطاق إلى Firebase Authorized domains أيضاً.
 
@@ -147,8 +147,8 @@
 - [x] بناء مكتبة داخلية تُدار من لوحة الإدارة (إضافة، تعديل، حذف، بحث، معاينة).
 - [ ] إنشاء حساب Cloudinary وإضافة Cloud name وUnsigned preset من إعدادات البوابة.
 - [ ] إضافة ملفات المكتبة الحقيقية من لوحة الإدارة.
-- [ ] نشر الموقع على Vercel بعد رفع الملفات إلى GitHub.
-- [ ] إضافة نطاق Vercel النهائي إلى Firebase Authorized domains.
+- [x] نشر الموقع على Vercel: `https://alfarooq-library.vercel.app/`.
+- [ ] إضافة `alfarooq-library.vercel.app` إلى Firebase Authorized domains.
 - [ ] حذف الأخبار والصور التجريبية واستبدالها بمحتوى المدرسة الحقيقي.
 - [ ] إضافة روابط إنستغرام وتويتر الرسميين من إعدادات البوابة.
 - [ ] تغيير كلمة مرور حساب الإدارة بعد استلام المشروع إن رغبت.
