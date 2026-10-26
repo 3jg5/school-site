@@ -167,9 +167,9 @@
               <svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg>
               إعلانات المكتبة
             </button>
-            <button class="tab" id="tabDrive" type="button" role="tab" aria-selected="false" aria-controls="panelDrive" data-tab="drive">
+            <button class="tab" id="tabLibrary" type="button" role="tab" aria-selected="false" aria-controls="panelLibrary" data-tab="library">
               <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
-              مكتبة الدرايف
+              مكتبة الملفات
             </button>
             <button class="tab" id="tabSettings" type="button" role="tab" aria-selected="false" aria-controls="panelSettings" data-tab="settings">
               <svg class="icon" aria-hidden="true"><use href="#i-link"></use></svg>
@@ -225,62 +225,25 @@
             </div>
           </section>
 
-          <section class="panel" id="panelDrive" role="tabpanel" aria-labelledby="tabDrive" hidden>
+          <section class="panel" id="panelLibrary" role="tabpanel" aria-labelledby="tabLibrary" hidden>
             <div class="panel-card">
               <div class="panel-toolbar">
                 <div>
-                  <h2>مكتبة الدرايف</h2>
-                  <p>ارفع الملفات، أنشئ المجلدات، عدّل الأوصاف، واحذف ما لم يعد مطلوبًا. تظهر التغييرات في صفحة المكتبة.</p>
+                  <h2>مكتبة الملفات</h2>
+                  <p>أضف ملفات من جهازك مع عنوان ووصف وتصنيف، وستظهر لزوار المكتبة فورًا.</p>
                 </div>
                 <div class="panel-toolbar__actions">
-                  <button class="btn btn--green btn--sm" id="driveConnectBtn" type="button">
-                    <svg class="icon" aria-hidden="true"><use href="#i-cloud"></use></svg>
-                    ربط حساب Google
-                  </button>
-                  <button class="btn btn--ghost btn--sm" id="driveDisconnectBtn" type="button" hidden>
-                    <svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg>
-                    قطع الاتصال
+                  <button class="btn btn--green btn--sm" id="addLibraryBtn" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                    إضافة ملف
                   </button>
                 </div>
               </div>
-
-              <div class="drive-connect" id="driveConnectState">
-                <span class="drive-connect__icon">
-                  <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-                </span>
-                <div class="drive-connect__copy">
-                  <strong id="driveConnectTitle">لم يتم ربط الدرايف بعد</strong>
-                  <p id="driveConnectText">اربط حساب Google المالك للمجلد أو حسابًا لديه صلاحية تعديل، لتتمكن من رفع الملفات وحذفها. يمكنك مشاهدة الملفات وتعديل أوصافها دون ربط.</p>
-                </div>
-                <span class="badge" id="driveConnectBadge">غير متصل</span>
-              </div>
-
-              <div class="drive-admin-toolbar">
-                <nav class="drive-crumbs" id="driveAdminCrumbs" aria-label="مسار مجلد المكتبة">
-                  <span class="drive-crumb is-current" aria-current="page">المكتبة</span>
-                </nav>
-                <div class="drive-tools">
-                  <button class="btn btn--sm btn--ghost" id="driveAdminRefresh" type="button">
-                    <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
-                    تحديث
-                  </button>
-                  <button class="btn btn--sm btn--ghost" id="driveAdminFolder" type="button" disabled>
-                    <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
-                    مجلد جديد
-                  </button>
-                  <button class="btn btn--sm btn--green" id="driveAdminUpload" type="button" disabled>
-                    <svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg>
-                    رفع ملفات
-                  </button>
-                </div>
-              </div>
-
-              <div class="drive-status" id="driveAdminStatus" aria-live="polite">جارٍ تحميل محتوى المكتبة…</div>
-              <div class="panel-list" id="adminDriveList" aria-live="polite">
+              <div class="panel-list" id="adminLibraryList" aria-live="polite">
                 <div class="admin-empty">
                   <span class="spinner" aria-hidden="true"></span>
-                  <h3>جارٍ تحميل مكتبة الدرايف</h3>
-                  <p>يتم جلب محتوى المجلد الرسمي.</p>
+                  <h3>جارٍ تحميل ملفات المكتبة</h3>
+                  <p>يتم جلب المحتوى من قاعدة البيانات.</p>
                 </div>
               </div>
             </div>
@@ -291,7 +254,7 @@
               <div class="panel-toolbar">
                 <div>
                   <h2>إعدادات البوابة</h2>
-                  <p>روابط الحسابات الرسمية ومصدر ملفات المكتبة الرقمية.</p>
+                  <p>روابط الحسابات الرسمية وإعدادات رفع ملفات المكتبة.</p>
                 </div>
               </div>
               <form class="settings-form" id="settingsForm">
@@ -306,14 +269,14 @@
                   <span class="field__hint">سيُفعَّل زر الحساب تلقائيًا بعد الحفظ.</span>
                 </div>
                 <div class="field">
-                  <label for="settingDrive">رابط مجلد المكتبة الرسمي</label>
-                  <input id="settingDrive" type="url" placeholder="https://drive.google.com/drive/folders/…" dir="ltr">
-                  <span class="field__hint">تُعرض ملفات هذا المجلد داخل صفحة المكتبة مباشرة. يجب أن يكون المجلد متاحًا لمن لديه الرابط.</span>
+                  <label for="settingCloudinaryCloud">اسم الحساب في Cloudinary (Cloud name)</label>
+                  <input id="settingCloudinaryCloud" type="text" placeholder="farooq-school" dir="ltr" autocomplete="off" spellcheck="false">
+                  <span class="field__hint">من لوحة Cloudinary ← Dashboard. يُستخدم لتخزين ملفات المكتبة التي ترفعها من اللوحة.</span>
                 </div>
                 <div class="field">
-                  <label for="settingDriveClientId">معرّف OAuth لربط الدرايف (Client ID)</label>
-                  <input id="settingDriveClientId" type="text" placeholder="1234567890-abc.apps.googleusercontent.com" dir="ltr" autocomplete="off" spellcheck="false">
-                  <span class="field__hint">من Google Cloud Console ← APIs &amp; Services ← Credentials. يلزم مرة واحدة لتمكين رفع الملفات وحذفها بعد ربط حساب Google.</span>
+                  <label for="settingCloudinaryPreset">اسم الرفع غير الموقّع (Unsigned upload preset)</label>
+                  <input id="settingCloudinaryPreset" type="text" placeholder="ml_default" dir="ltr" autocomplete="off" spellcheck="false">
+                  <span class="field__hint">من Cloudinary ← Settings ← Upload ← Add upload preset، واختر Signing Mode: Unsigned. بعد حفظه هنا يعمل زر رفع الملفات.</span>
                 </div>
                 <div class="form-actions">
                   <button class="btn btn--green btn--sm" type="submit" id="saveSettingsBtn">
@@ -463,8 +426,8 @@
             </div>
 
             <div class="field">
-              <label for="announcementLink">رابط الملف على درايف <span class="field__hint">(اختياري)</span></label>
-              <input id="announcementLink" name="link" type="url" placeholder="https://drive.google.com/…" dir="ltr">
+              <label for="announcementLink">رابط ملف الإعلان <span class="field__hint">(اختياري)</span></label>
+              <input id="announcementLink" name="link" type="url" placeholder="https://…" dir="ltr">
             </div>
 
             <div class="field field--full">
@@ -489,135 +452,62 @@
     <option value="نموذج"></option>
     <option value="قرار"></option>
     <option value="تعميم"></option>
+    <option value="كتاب"></option>
+    <option value="ورقة عمل"></option>
+    <option value="نشاط"></option>
     <option value="صورة"></option>
-    <option value="فيديو"></option>
-    <option value="مجلد"></option>
     <option value="عام"></option>
   </datalist>
 
-  <dialog id="driveUploadDialog" aria-labelledby="driveUploadTitle">
-    <div class="modal modal--form">
-      <div class="modal__head">
-        <div class="modal__head-copy">
-          <span class="modal__eyebrow">
-            <svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg>
-            مكتبة الدرايف
-          </span>
-          <h2 class="modal__title" id="driveUploadTitle">رفع ملفات جديدة</h2>
-          <p class="modal__sub" id="driveUploadTarget">سيتم الرفع إلى المجلد الحالي في مكتبة المدرسة.</p>
-        </div>
-        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج الرفع">
-          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
-        </button>
-      </div>
-
-      <form id="driveUploadForm">
-        <div class="modal__body">
-          <div class="form-grid">
-            <div class="field field--full">
-              <label for="driveUploadFiles">الملفات المطلوب رفعها</label>
-              <input class="drive-file-input" id="driveUploadFiles" type="file" multiple required>
-              <span class="field__hint">يمكنك اختيار أكثر من ملف. يُفضّل ألا يتجاوز حجم الملف الواحد 100 ميجابايت.</span>
-            </div>
-            <div class="field field--full">
-              <label for="driveUploadDescription">وصف الملفات <span class="field__hint">(اختياري)</span></label>
-              <textarea id="driveUploadDescription" rows="3" maxlength="1600" placeholder="وصف مختصر يظهر للزوار تحت عنوان الملف. يمكن تعديله لاحقًا لكل ملف على حدة."></textarea>
-            </div>
-            <div class="field">
-              <label for="driveUploadCategory">التصنيف <span class="field__hint">(اختياري)</span></label>
-              <input id="driveUploadCategory" type="text" list="libraryCategories" maxlength="40" placeholder="مثال: وثيقة رسمية">
-            </div>
-          </div>
-          <div class="upload-progress" id="driveUploadProgress" hidden>
-            <div class="upload-progress__track"><span class="upload-progress__bar" id="driveUploadBar"></span></div>
-            <p class="upload-progress__text" id="driveUploadStatus">جارٍ تجهيز الرفع…</p>
-          </div>
-        </div>
-        <div class="modal__foot">
-          <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>إلغاء</button>
-          <button class="btn btn--green btn--sm" type="submit" id="driveUploadSubmit">رفع الملفات</button>
-        </div>
-      </form>
-    </div>
-  </dialog>
-
-  <dialog id="driveFolderDialog" aria-labelledby="driveFolderTitle">
+  <dialog id="libraryFormDialog" aria-labelledby="libraryFormTitle">
     <div class="modal modal--form">
       <div class="modal__head">
         <div class="modal__head-copy">
           <span class="modal__eyebrow">
             <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
-            مكتبة الدرايف
+            مكتبة الملفات
           </span>
-          <h2 class="modal__title" id="driveFolderTitle">إنشاء مجلد جديد</h2>
+          <h2 class="modal__title" id="libraryFormTitle">إضافة ملف إلى المكتبة</h2>
+          <p class="modal__sub" id="libraryFormSub">سيظهر الملف في صفحة المكتبة فور الحفظ.</p>
         </div>
-        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج المجلد">
+        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج الملف">
           <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
         </button>
       </div>
 
-      <form id="driveFolderForm">
+      <form id="libraryForm">
         <div class="modal__body">
           <div class="form-grid">
             <div class="field field--full">
-              <label for="driveFolderName">اسم المجلد</label>
-              <input id="driveFolderName" type="text" maxlength="120" required placeholder="مثال: النماذج الإدارية">
+              <label for="libraryTitle">عنوان الملف</label>
+              <input id="libraryTitle" type="text" maxlength="180" required placeholder="مثال: دليل أولياء الأمور 2026">
             </div>
             <div class="field field--full">
-              <label for="driveFolderDescription">وصف المجلد <span class="field__hint">(اختياري)</span></label>
-              <textarea id="driveFolderDescription" rows="3" maxlength="1600" placeholder="وصف مختصر يظهر للزوار في بطاقة المجلد."></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal__foot">
-          <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>إلغاء</button>
-          <button class="btn btn--green btn--sm" type="submit" id="driveFolderSubmit">إنشاء المجلد</button>
-        </div>
-      </form>
-    </div>
-  </dialog>
-
-  <dialog id="driveEditDialog" aria-labelledby="driveEditTitle">
-    <div class="modal modal--form">
-      <div class="modal__head">
-        <div class="modal__head-copy">
-          <span class="modal__eyebrow">
-            <svg class="icon" aria-hidden="true"><use href="#i-pen"></use></svg>
-            مكتبة الدرايف
-          </span>
-          <h2 class="modal__title" id="driveEditTitle">تعديل بيانات الملف</h2>
-          <p class="modal__sub" id="driveEditSub"></p>
-        </div>
-        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج التعديل">
-          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
-        </button>
-      </div>
-
-      <form id="driveEditForm">
-        <div class="modal__body">
-          <div class="form-grid">
-            <div class="field field--full">
-              <label for="driveEditTitleInput">العنوان الظاهر في المكتبة <span class="field__hint">(اختياري)</span></label>
-              <input id="driveEditTitleInput" type="text" maxlength="180" placeholder="اتركه فارغًا لاستخدام اسم الملف.">
-            </div>
-            <div class="field field--full">
-              <label for="driveEditDescription">الوصف</label>
-              <textarea id="driveEditDescription" rows="4" maxlength="1600" placeholder="وصف يظهر في بطاقة الملف بصفحة المكتبة."></textarea>
+              <label for="libraryDescription">الوصف</label>
+              <textarea id="libraryDescription" rows="4" maxlength="1600" placeholder="وصف مختصر يظهر للزوار تحت عنوان الملف."></textarea>
             </div>
             <div class="field">
-              <label for="driveEditCategory">التصنيف</label>
-              <input id="driveEditCategory" type="text" list="libraryCategories" maxlength="40" placeholder="مثال: دليل">
+              <label for="libraryCategory">التصنيف <span class="field__hint">(اختياري)</span></label>
+              <input id="libraryCategory" type="text" list="libraryCategories" maxlength="40" placeholder="مثال: دليل">
             </div>
-            <div class="field" id="driveEditFileField" hidden>
-              <label for="driveEditDriveName">اسم الملف في الدرايف</label>
-              <input id="driveEditDriveName" type="text" maxlength="255" dir="auto">
-              <span class="field__hint">تغييره يعيد تسمية الملف الفعلي في مجلد المكتبة.</span>
+            <div class="field field--full">
+              <label for="libraryFile">الملف من جهازك <span class="field__hint">(حتى 10 ميجابايت)</span></label>
+              <input class="drive-file-input" id="libraryFile" type="file">
+              <span class="field__hint" id="libraryFileNote">اختر ملفًا لرفعه عند الحفظ، أو استخدم الرابط المباشر بالأسفل.</span>
             </div>
+            <div class="field field--full">
+              <label for="libraryUrl">أو رابط مباشر للملف <span class="field__hint">(اختياري)</span></label>
+              <input id="libraryUrl" type="url" placeholder="https://…" dir="ltr">
+            </div>
+          </div>
+          <div class="upload-progress" id="libraryProgress" hidden>
+            <div class="upload-progress__track"><span class="upload-progress__bar" id="libraryBar"></span></div>
+            <p class="upload-progress__text" id="libraryStatus">جارٍ تجهيز الرفع…</p>
           </div>
         </div>
         <div class="modal__foot">
           <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>إلغاء</button>
-          <button class="btn btn--green btn--sm" type="submit" id="driveEditSubmit">حفظ التعديلات</button>
+          <button class="btn btn--green btn--sm" type="submit" id="librarySubmitBtn">حفظ الملف</button>
         </div>
       </form>
     </div>
@@ -654,7 +544,6 @@
   <script src="js/icons.js" defer></script>
   <script src="js/store.js" defer></script>
   <script src="js/utils.js" defer></script>
-  <script src="https://accounts.google.com/gsi/client" defer></script>
   <script src="js/admin.js" defer></script>
 </body>
 </html>

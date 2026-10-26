@@ -66,8 +66,8 @@
         </div>
         <h1 id="libraryTitle">المكتبة الإلكترونية للفاروق</h1>
         <p>
-          مكتبة رقمية تعرض ملفات المدرسة ومرفقاتها الرسمية مباشرة داخل الموقع،
-          مع معاينة فورية للوثائق ولوحة إعلانات محدّثة من إدارة المدرسة.
+          مكتبة رقمية تضم ملفات المدرسة ووثائقها، مع معاينة داخل الموقع وبحث سريع،
+          ولوحة إعلانات محدّثة من إدارة المدرسة.
         </p>
         <div class="page-hero__stats">
           <span class="hero-stat">
@@ -76,7 +76,7 @@
           </span>
           <span class="hero-stat">
             <span class="sync-dot" aria-hidden="true"></span>
-            متزامنة مع مجلد المدرسة
+            تُحدَّث تلقائيًا من الإدارة
           </span>
           <span class="hero-stat">
             <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
@@ -86,62 +86,38 @@
       </div>
     </section>
 
-    <section class="library-drive" aria-labelledby="driveTitle">
+    <section class="library-drive" aria-labelledby="librarySectionTitle">
       <div class="container">
         <div class="drive-panel">
           <div class="drive-head">
             <div>
               <span class="section__kicker">محتوى المكتبة</span>
-              <h2 id="driveTitle">ملفات ومرفقات المكتبة</h2>
-              <p class="drive-head__desc">تصفّح ملفات المكتبة الرسمية داخل الموقع، واعرض أي وثيقة مباشرة دون مغادرة الصفحة.</p>
+              <h2 id="librarySectionTitle">ملفات ومرفقات المكتبة</h2>
+              <p class="drive-head__desc">تصفّح ملفات المكتبة، واعرض أي وثيقة مباشرة داخل الصفحة أو حمّلها.</p>
             </div>
             <span class="drive-sync">
               <span class="sync-dot" aria-hidden="true"></span>
-              متزامن مع المجلد الرسمي
+              تُحدَّث تلقائيًا
             </span>
           </div>
 
-          <div class="data-alert" id="driveAlert" role="alert">
-            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
-            <span id="driveAlertText">تعذر تحميل محتوى المكتبة.</span>
-          </div>
-
           <div class="drive-toolbar">
-            <nav class="drive-crumbs" id="driveCrumbs" aria-label="مسار مجلد المكتبة">
-              <span class="drive-crumb is-current" aria-current="page">المكتبة</span>
-            </nav>
-            <div class="drive-tools">
+            <div class="drive-tools drive-tools--end">
               <label class="search-field search-field--compact">
                 <span class="sr-only">ابحث في ملفات المكتبة</span>
                 <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
-                <input id="driveSearch" type="search" placeholder="ابحث في الملفات…" autocomplete="off">
+                <input id="librarySearch" type="search" placeholder="ابحث في الملفات…" autocomplete="off">
               </label>
-              <button class="btn btn--sm btn--ghost" id="driveRefresh" type="button">
-                <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
-                تحديث
-              </button>
             </div>
           </div>
 
-          <div class="drive-status" id="driveStatus" aria-live="polite">جارٍ تحميل محتوى المكتبة…</div>
+          <div class="drive-status" id="libraryStatus" aria-live="polite">جارٍ تحميل محتوى المكتبة…</div>
 
-          <div class="drive-grid" id="driveGrid" aria-live="polite">
+          <div class="drive-grid" id="libraryGrid" aria-live="polite">
             <div class="drive-skeleton" aria-hidden="true"></div>
             <div class="drive-skeleton" aria-hidden="true"></div>
             <div class="drive-skeleton" aria-hidden="true"></div>
             <div class="drive-skeleton" aria-hidden="true"></div>
-            <div class="drive-skeleton" aria-hidden="true"></div>
-            <div class="drive-skeleton" aria-hidden="true"></div>
-            <div class="drive-skeleton" aria-hidden="true"></div>
-            <div class="drive-skeleton" aria-hidden="true"></div>
-          </div>
-
-          <div class="drive-fallback" id="driveFallback" hidden>
-            <p class="drive-fallback__note">
-              <svg class="icon" aria-hidden="true"><use href="#i-cloud"></use></svg>
-              يتم عرض المجلد الرسمي المضمّن أدناه. إذا لم تظهر الملفات، حدّث الصفحة أو جرّب متصفحًا آخر.
-            </p>
-            <iframe class="drive-frame" id="driveFrame" title="محتوى مجلد المكتبة الرسمي" loading="lazy"></iframe>
           </div>
         </div>
       </div>
@@ -181,18 +157,14 @@
             <div class="side-card side-card--green">
               <div class="side-card__inner">
                 <h3>
-                  <svg class="icon" aria-hidden="true"><use href="#i-cloud"></use></svg>
-                  مكتبة متزامنة
+                  <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+                  مكتبة المدرسة
                 </h3>
-                <p>ملفات المكتبة والمرفقات المعتمدة تُعرض داخل الموقع مباشرة من المجلد الرسمي، وتظهر الملفات الجديدة فور إضافتها.</p>
-                <span class="drive-note" id="driveNote">
+                <p>ملفات المكتبة المعتمدة تُعرض داخل الموقع مع وصف لكل ملف، وتظهر الملفات الجديدة فور إضافتها من إدارة المدرسة.</p>
+                <span class="drive-note">
                   <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
-                  <span id="driveNoteText">المصدر: المجلد الرسمي للمكتبة</span>
+                  <span>المصدر: إدارة المدرسة</span>
                 </span>
-                <button class="btn btn--sm btn--gold btn--block" id="libraryDriveRefresh" type="button">
-                  <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
-                  تحديث محتوى المكتبة
-                </button>
               </div>
             </div>
 
@@ -223,7 +195,7 @@
                 عن المكتبة
               </h3>
               <p>
-                تُدار هذه المساحة من إدارة المدرسة. تُعرض ملفات المكتبة الرسمية داخل الصفحة من المجلد المعتمد،
+                تُدار هذه المساحة من إدارة المدرسة. تُضاف ملفات المكتبة الرسمية من لوحة الإدارة مع وصف لكل ملف،
                 وتُضاف إعلانات الإدارة في اللوحة أدناه.
               </p>
             </div>
@@ -247,7 +219,7 @@
           <p class="footer__about">
             المكتبة الإلكترونية لمدرسة الفاروق: إعلانات وملفات وروابط تعليمية تُحدَّث مباشرة من إدارة المدرسة.
           </p>
-          <p class="footer__note">يتزامن محتوى المكتبة مع المجلد الرسمي المعتمد من إدارة المدرسة، وتُعرض الملفات داخل الموقع.</p>
+          <p class="footer__note">تُحدَّث ملفات المكتبة وإعلاناتها من لوحة الإدارة، وتُعرض الملفات داخل الموقع مباشرة.</p>
         </div>
 
         <div class="footer__col">
@@ -283,7 +255,7 @@
     </div>
   </footer>
 
-  <dialog id="drivePreviewDialog" aria-labelledby="drivePreviewTitle">
+  <dialog id="libraryPreviewDialog" aria-labelledby="libraryPreviewTitle">
     <div class="modal">
       <div class="modal__head">
         <div class="modal__head-copy">
@@ -291,8 +263,8 @@
             <svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg>
             معاينة من مكتبة الفاروق
           </span>
-          <h2 class="modal__title" id="drivePreviewTitle">معاينة الملف</h2>
-          <p class="modal__sub" id="drivePreviewMeta"></p>
+          <h2 class="modal__title" id="libraryPreviewTitle">معاينة الملف</h2>
+          <p class="modal__sub" id="libraryPreviewMeta"></p>
         </div>
         <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق المعاينة">
           <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
@@ -300,8 +272,13 @@
       </div>
       <div class="modal__body modal__body--flush drive-preview__body">
         <div class="drive-preview__frame">
-          <iframe id="drivePreviewFrame" title="معاينة الملف" allow="autoplay" allowfullscreen></iframe>
-          <div class="drive-preview__loading" id="drivePreviewLoading">
+          <iframe id="libraryPreviewFrame" title="معاينة الملف" allow="autoplay" allowfullscreen></iframe>
+          <img id="libraryPreviewImage" alt="" hidden>
+          <div class="drive-preview__fallback" id="libraryPreviewFallback" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg>
+            <p>هذا النوع من الملفات لا يُعرض داخل الصفحة. استخدم زر التحميل أدناه.</p>
+          </div>
+          <div class="drive-preview__loading" id="libraryPreviewLoading">
             <span class="spinner" aria-hidden="true"></span>
             <span>جارٍ تحميل المعاينة…</span>
           </div>
@@ -309,12 +286,18 @@
         <div class="drive-preview__foot">
           <span class="drive-preview__note">
             <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-            المعاينة تُعرض داخل الموقع من مجلد المكتبة المعتمد.
+            ملف معتمد من إدارة المدرسة.
           </span>
-          <button class="btn btn--sm btn--ghost" type="button" data-close-dialog>
-            <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
-            إغلاق
-          </button>
+          <div class="drive-preview__actions">
+            <a class="btn btn--sm btn--ghost" id="libraryPreviewDownload" href="#" target="_blank" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+              تحميل الملف
+            </a>
+            <button class="btn btn--sm btn--ghost" type="button" data-close-dialog>
+              <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+              إغلاق
+            </button>
+          </div>
         </div>
       </div>
     </div>
