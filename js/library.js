@@ -188,8 +188,12 @@
   function clearPreview() {
     els.previewFrame.removeAttribute("src");
     els.previewImage.removeAttribute("src");
+    els.previewVideo.pause();
+    els.previewVideo.removeAttribute("src");
+    els.previewVideo.load();
     els.previewImage.hidden = true;
     els.previewFrame.hidden = true;
+    els.previewVideo.hidden = true;
     els.previewFallback.hidden = true;
     els.previewLoading.classList.remove("is-hidden");
     window.clearTimeout(clearPreview.timer);
@@ -215,6 +219,7 @@
     els.previewLoading.classList.remove("is-hidden");
     els.previewFrame.hidden = true;
     els.previewImage.hidden = true;
+    els.previewVideo.hidden = true;
     els.previewFallback.hidden = true;
 
     if (info.kind === "pdf") {
@@ -223,6 +228,9 @@
     } else if (info.kind === "image") {
       els.previewImage.hidden = false;
       els.previewImage.src = url;
+    } else if (info.kind === "video") {
+      els.previewVideo.hidden = false;
+      els.previewVideo.src = url;
     } else {
       els.previewFallback.hidden = false;
       els.previewLoading.classList.add("is-hidden");
@@ -353,6 +361,16 @@
       els.previewFallback.hidden = false;
       els.previewLoading.classList.add("is-hidden");
     });
+
+    els.previewVideo.addEventListener("loadeddata", function () {
+      els.previewLoading.classList.add("is-hidden");
+    });
+
+    els.previewVideo.addEventListener("error", function () {
+      els.previewVideo.hidden = true;
+      els.previewFallback.hidden = false;
+      els.previewLoading.classList.add("is-hidden");
+    });
   }
 
   function init() {
@@ -369,6 +387,7 @@
       previewMeta: document.getElementById("libraryPreviewMeta"),
       previewFrame: document.getElementById("libraryPreviewFrame"),
       previewImage: document.getElementById("libraryPreviewImage"),
+      previewVideo: document.getElementById("libraryPreviewVideo"),
       previewFallback: document.getElementById("libraryPreviewFallback"),
       previewLoading: document.getElementById("libraryPreviewLoading"),
       previewDownload: document.getElementById("libraryPreviewDownload"),

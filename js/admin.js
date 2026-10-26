@@ -6,6 +6,7 @@
   var config = window.SITE_CONFIG || {};
 
   var LIBRARY_MAX_BYTES = 10 * 1024 * 1024;
+  var VIDEO_MAX_BYTES = 100 * 1024 * 1024;
   var CLOUDINARY_MAX_BYTES = LIBRARY_MAX_BYTES;
 
   var state = {
@@ -420,6 +421,8 @@
     var name = String(item.fileName || item.url || "").toLowerCase();
     if (type.indexOf("pdf") >= 0 || /\.pdf(\?|$)/.test(name)) return { icon: "book-open", label: "PDF" };
     if (type.indexOf("image/") === 0 || /\.(png|jpe?g|gif|webp|svg)(\?|$)/.test(name)) return { icon: "image", label: "صورة" };
+    if (type.indexOf("video/") === 0 || /\.(mp4|webm|mov|m4v)(\?|$)/.test(name)) return { icon: "video", label: "فيديو" };
+    if (type.indexOf("audio/") === 0 || /\.(mp3|wav|ogg|m4a)(\?|$)/.test(name)) return { icon: "music", label: "صوت" };
     if (type.indexOf("word") >= 0 || /\.docx?(\?|$)/.test(name)) return { icon: "file", label: "مستند" };
     if (type.indexOf("sheet") >= 0 || /\.xlsx?(\?|$)/.test(name)) return { icon: "file", label: "جدول" };
     if (type.indexOf("presentation") >= 0 || /\.pptx?(\?|$)/.test(name)) return { icon: "file", label: "عرض" };
@@ -507,8 +510,11 @@
     if (!cloudinary.ready) {
       return Promise.reject(new Error("أضف اسم حساب Cloudinary واسم الرفع (Preset) من «إعدادات البوابة» أولًا."));
     }
-    if (file.size > CLOUDINARY_MAX_BYTES) {
-      return Promise.reject(new Error("حجم الملف يتجاوز 10 ميجابايت. اختر ملفًا أصغر."));
+    var isVideo = /^video\//.test(file.type || "") || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(file.name || "");
+    var maxBytes = isVideo ? VIDEO_MAX_BYTES : CLOUDINARY_MAX_BYTES;
+    if (file.size > maxBytes) {
+      var limit = isVideo ? "100 ميجابايت" : "10 ميجابايت";
+      return Promise.reject(new Error("حجم الملف يتجاوز " + limit + ". اختر ملفًا أصغر."));
     }
 
     return new Promise(function (resolve, reject) {
