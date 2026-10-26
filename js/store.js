@@ -420,7 +420,11 @@
       body: cleanText(data.body, 8000),
       date: cleanText(data.date, 10) || new Date().toISOString().slice(0, 10),
       image: String(data.image || "").trim().slice(0, 4000000),
-      pinned: Boolean(data.pinned)
+      pinned: Boolean(data.pinned),
+      attachmentUrl: cleanText(data.attachmentUrl, 1200),
+      attachmentName: cleanText(data.attachmentName, 255),
+      attachmentType: cleanText(data.attachmentType, 120),
+      attachmentSize: Math.max(0, Math.min(Number(data.attachmentSize) || 0, 500 * 1024 * 1024))
     };
   }
 

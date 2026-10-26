@@ -381,6 +381,23 @@
             </div>
 
             <div class="field field--full">
+              <span class="field__label">مرفق مع الخبر (فيديو أو ملف) <span class="field__hint">(اختياري)</span></span>
+              <div class="file-field">
+                <input class="file-input-hidden" id="newsAttachmentFile" type="file">
+                <label class="btn btn--ghost btn--sm" for="newsAttachmentFile">
+                  <svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg>
+                  رفع مرفق من الجهاز
+                </label>
+              </div>
+              <span class="field__hint">الفيديو حتى 100 ميجابايت، وغيره حتى 10 ميجابايت. يُرفع عبر Cloudinary عند الحفظ.</span>
+              <div class="field">
+                <label for="newsAttachmentUrl">أو رابط المرفق مباشرة</label>
+                <input id="newsAttachmentUrl" type="url" placeholder="https://example.com/video.mp4" dir="ltr">
+              </div>
+              <span class="field__hint" id="newsAttachmentNote">بدون مرفق — اختر ملفًا أو ضع رابطًا مباشرًا.</span>
+            </div>
+
+            <div class="field field--full">
               <label class="checkbox">
                 <input id="newsPinned" type="checkbox">
                 تثبيت الخبر في مقدمة الصفحة الرئيسية

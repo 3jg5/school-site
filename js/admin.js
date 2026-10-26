@@ -23,6 +23,7 @@
     deleteTarget: null,
     uploadedImage: null,
     existingImage: "",
+    newsAttachment: null,
     libraryFile: null,
     libraryExistingUrl: "",
     settingsFilled: false,
@@ -662,7 +663,13 @@
     state.editingNewsId = item ? item.id : null;
     state.uploadedImage = null;
     state.existingImage = (item && item.image) || "";
+    state.newsAttachment = null;
     els.newsImageFile.value = "";
+    els.newsAttachmentFile.value = "";
+    els.newsAttachmentUrl.value = (item && item.attachmentUrl) || "";
+    els.newsAttachmentNote.textContent = item && item.attachmentUrl
+      ? "المرفق الحالي: " + (item.attachmentName || item.attachmentUrl) + " — امسح الرابط لإزالته."
+      : "بدون مرفق — اختر ملفًا أو ضع رابطًا مباشرًا.";
 
     els.newsFormTitle.textContent = item ? "تعديل الخبر" : "إضافة خبر جديد";
     setSubmitLabel(els.newsSubmitBtn, item ? "حفظ التعديلات" : "نشر الخبر");
@@ -955,6 +962,30 @@
       updateImagePreview("", "تمت إزالة الصورة.");
     });
 
+    els.newsAttachmentFile.addEventListener("change", function () {
+      var file = els.newsAttachmentFile.files && els.newsAttachmentFile.files[0];
+      if (!file) return;
+      var isVideo = /^video\//.test(file.type || "") || /\.(mp4|webm|mov|m4v)(\?|$)/i.test(file.name || "");
+      var maxBytes = isVideo ? VIDEO_MAX_BYTES : CLOUDINARY_MAX_BYTES;
+      if (file.size > maxBytes) {
+        els.newsAttachmentFile.value = "";
+        state.newsAttachment = null;
+        UI.showToast(isVideo ? "حجم الفيديو يتجاوز 100 ميجابايت." : "حجم الملف يتجاوز 10 ميجابايت.", "error");
+        return;
+      }
+      state.newsAttachment = file;
+      els.newsAttachmentUrl.value = "";
+      els.newsAttachmentNote.textContent = "سيُرفع عند الحفظ: " + file.name + " (" + formatBytes(file.size) + ")";
+    });
+
+    els.newsAttachmentUrl.addEventListener("input", function () {
+      state.newsAttachment = null;
+      els.newsAttachmentFile.value = "";
+      els.newsAttachmentNote.textContent = els.newsAttachmentUrl.value
+        ? "سيُستخدم الرابط المباشر كمرفق للخبر."
+        : "بدون مرفق — اختر ملفًا أو ضع رابطًا مباشرًا.";
+    });
+
     els.newsForm.addEventListener("submit", function (event) {
       event.preventDefault();
       if (!els.newsForm.reportValidity()) return;
@@ -969,16 +1000,44 @@
         pinned: els.newsPinned.checked
       };
 
-      var isEditing = Boolean(state.editingNewsId);
-      setBusy(els.newsSubmitBtn, true, "جارٍ الحفظ…");
-      var request = isEditing
-        ? Store.updateNews(state.editingNewsId, payload)
-        : Store.addNews(payload);
+      var rawAttachment = els.newsAttachmentUrl.value.trim();
+      if (rawAttachment && !UI.safeLink(rawAttachment)) {
+        UI.showToast("رابط المرفق غير صالح. استخدم رابطًا يبدأ بـ https://", "error");
+        return;
+      }
 
-      request.then(function () {
+      var isEditing = Boolean(state.editingNewsId);
+      setBusy(els.newsSubmitBtn, true, state.newsAttachment ? "جارٍ رفع المرفق…" : "جارٍ الحفظ…");
+
+      var attachmentReady = Promise.resolve(null);
+      if (state.newsAttachment) {
+        attachmentReady = uploadLibraryFile(state.newsAttachment);
+      }
+
+      attachmentReady.then(function (uploaded) {
+        if (uploaded && uploaded.secure_url) {
+          payload.attachmentUrl = uploaded.secure_url;
+          payload.attachmentName = state.newsAttachment.name;
+          payload.attachmentType = state.newsAttachment.type || "";
+          payload.attachmentSize = state.newsAttachment.size || 0;
+        } else {
+          payload.attachmentUrl = rawAttachment;
+          var existing = isEditing
+            ? state.news.find(function (entry) { return entry.id === state.editingNewsId; })
+            : null;
+          payload.attachmentName = rawAttachment ? (existing && existing.attachmentName) || "" : "";
+          payload.attachmentType = rawAttachment ? (existing && existing.attachmentType) || "" : "";
+          payload.attachmentSize = rawAttachment ? (existing && existing.attachmentSize) || 0 : 0;
+        }
+
+        return isEditing
+          ? Store.updateNews(state.editingNewsId, payload)
+          : Store.addNews(payload);
+      }).then(function () {
         UI.closeDialog(els.newsFormDialog);
         UI.showToast(isEditing ? "تم تحديث الخبر وسيظهر التعديل فورًا." : "تم نشر الخبر وسيظهر فورًا في الصفحة الرئيسية.");
         state.editingNewsId = null;
+        state.newsAttachment = null;
         setBusy(els.newsSubmitBtn, false);
       }).catch(function (error) {
         console.error(error);
@@ -1155,6 +1214,9 @@
       newsImagePreset: document.getElementById("newsImagePreset"),
       newsImageUrl: document.getElementById("newsImageUrl"),
       newsImageFile: document.getElementById("newsImageFile"),
+      newsAttachmentFile: document.getElementById("newsAttachmentFile"),
+      newsAttachmentUrl: document.getElementById("newsAttachmentUrl"),
+      newsAttachmentNote: document.getElementById("newsAttachmentNote"),
       newsImagePreviewImg: document.getElementById("newsImagePreviewImg"),
       newsImagePreviewEmpty: document.getElementById("newsImagePreviewEmpty"),
       newsImagePreviewNote: document.getElementById("newsImagePreviewNote"),

@@ -55,6 +55,40 @@
     }
   }
 
+  function attachmentKind(item) {
+    var mime = String(item.attachmentType || "").toLowerCase();
+    var name = String(item.attachmentName || item.attachmentUrl || "").toLowerCase();
+    if (/^video\//.test(mime) || /\.(mp4|webm|mov|m4v)(\?|$)/.test(name)) return "video";
+    return "file";
+  }
+
+  function attachmentBlock(item) {
+    var url = UI.safeLink(item.attachmentUrl);
+    if (!url) return "";
+    var label = item.attachmentName || "مرفق الخبر";
+    if (attachmentKind(item) === "video") {
+      return '<div class="article-attachment">' +
+        '<p class="article-attachment__label">' + window.icon("video") + " فيديو مرفق مع الخبر</p>" +
+        '<video controls playsinline preload="metadata" src="' + UI.escapeHtml(url) + '"></video>' +
+        '<a class="btn btn--ghost btn--sm" href="' + UI.escapeHtml(url) + '" target="_blank" rel="noopener">' + window.icon("download") + " تحميل الفيديو</a>" +
+        "</div>";
+    }
+    return '<div class="article-attachment">' +
+      '<p class="article-attachment__label">' + window.icon("file") + " مرفق مع الخبر</p>" +
+      '<a class="btn btn--ghost btn--sm" href="' + UI.escapeHtml(url) + '" target="_blank" rel="noopener">' + window.icon("external") + " " + UI.escapeHtml(label) + "</a>" +
+      "</div>";
+  }
+
+  function clearNewsAttachment() {
+    var video = els.newsDialogAttachment.querySelector("video");
+    if (video) {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    }
+    els.newsDialogAttachment.innerHTML = "";
+  }
+
   function newsCard(item, index, featured) {
     var image = UI.safeImage(item.image);
     var category = UI.escapeHtml(item.category || "عام");
@@ -67,6 +101,7 @@
       (image ? '<img class="news-card__image" src="' + UI.escapeHtml(image) + '" alt="' + title + '" loading="lazy" width="700" height="440">' : "") +
       '<span class="news-card__tag">' + category + "</span>" +
       (item.pinned ? '<span class="news-card__pin" title="خبر مثبت">' + window.icon("pin") + "</span>" : "") +
+      (item.attachmentUrl ? '<span class="news-card__attach">' + window.icon(attachmentKind(item) === "video" ? "video" : "file") + (attachmentKind(item) === "video" ? " فيديو مرفق" : " ملف مرفق") + "</span>" : "") +
       "</div>";
 
     var body = '<div class="news-card__body">' +
@@ -149,6 +184,9 @@
     els.newsDialogContent.innerHTML = paragraphs.length
       ? paragraphs.map(function (line) { return "<p>" + UI.escapeHtml(line) + "</p>"; }).join("")
       : "<p>لا توجد تفاصيل إضافية لهذا الخبر.</p>";
+
+    clearNewsAttachment();
+    els.newsDialogAttachment.innerHTML = attachmentBlock(item);
 
     els.newsDialogTags.innerHTML =
       '<span class="article-meta__item">' + window.icon("users") + " إدارة المدرسة</span>" +
@@ -248,6 +286,8 @@
       event.preventDefault();
       openNews(trigger.getAttribute("data-news-id"));
     });
+
+    els.newsDialog.addEventListener("close", clearNewsAttachment);
   }
 
   function init() {
@@ -268,6 +308,7 @@
       newsDialogImage: document.getElementById("newsDialogImage"),
       newsDialogMeta: document.getElementById("newsDialogMeta"),
       newsDialogContent: document.getElementById("newsDialogContent"),
+      newsDialogAttachment: document.getElementById("newsDialogAttachment"),
       newsDialogTags: document.getElementById("newsDialogTags")
     };
 
