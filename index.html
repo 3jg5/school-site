@@ -7,6 +7,11 @@
   <meta name="theme-color" content="#052f25">
   <title>مدرسة الفاروق | البوابة الرسمية</title>
   <link rel="icon" type="image/png" href="assets/logos/favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/logos/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="مدرسة الفاروق">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -15,7 +20,7 @@
   <div class="topbar">
     <div class="container topbar__inner">
       <div class="topbar__state">
-        <span>سلطنة عُمان <span aria-hidden="true">—</span> وزارة التربية والتعليم</span>
+        <span>سلطنة عُمان <span aria-hidden="true">—</span> وزارة التعليم</span>
       </div>
       <div class="topbar__links">
         <a class="topbar__optional" href="https://www.moe.gov.om/" target="_blank" rel="noopener" data-link="ministry">بوابة الوزارة</a>
@@ -66,11 +71,11 @@
         </p>
 
         <div class="emblems" aria-label="بوابة الجهات والمواقع الرسمية">
-          <button class="emblem js-open-gateway" type="button" data-entity="ministry" aria-label="الدخول إلى بوابة وزارة التربية والتعليم">
+          <button class="emblem js-open-gateway" type="button" data-entity="ministry" aria-label="الدخول إلى بوابة وزارة التعليم">
             <span class="emblem__logo">
-              <img src="assets/logos/ministry-logo.png" alt="شعار وزارة التربية والتعليم" width="84" height="104">
+              <img src="assets/logos/ministry-logo.png" alt="شعار وزارة التعليم" width="84" height="104">
             </span>
-            <span class="emblem__name">وزارة التربية والتعليم</span>
+            <span class="emblem__name">وزارة التعليم</span>
             <span class="emblem__sub">الموقع الرسمي للوزارة</span>
             <span class="emblem__cta">زيارة الموقع <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"></use></svg></span>
           </button>
@@ -344,9 +349,9 @@
 
           <article class="gateway-entity" data-gateway-entity="ministry">
             <div class="gateway-entity__head">
-              <img src="assets/logos/ministry-mark.png" alt="شعار وزارة التربية والتعليم">
+              <img src="assets/logos/ministry-mark.png" alt="شعار وزارة التعليم">
               <div>
-                <h3>وزارة التربية والتعليم</h3>
+                <h3>وزارة التعليم</h3>
                 <p>الموقع الرسمي للوزارة</p>
               </div>
             </div>
@@ -414,6 +419,7 @@
   <script src="js/icons.js" defer></script>
   <script src="js/store.js" defer></script>
   <script src="js/utils.js" defer></script>
+  <script src="js/pwa.js" defer></script>
   <script src="js/home.js" defer></script>
 </body>
 </html>
