@@ -2438,6 +2438,11 @@ html.has-dialog {
   background: linear-gradient(135deg, #f1efec, #e4e0da);
 }
 
+.drive-card__cover--file {
+  color: var(--green-700);
+  background: linear-gradient(135deg, #eef6f2, #dcece4);
+}
+
 .drive-card__body {
   display: flex;
   flex-direction: column;
