@@ -395,6 +395,7 @@
             demoVersion = data.version;
             notifyDemo("news");
             notifyDemo("announcements");
+            notifyDemo("library");
             notifyDemo("settings");
           }
         };
@@ -516,21 +517,45 @@
     return Promise.resolve();
   }
 
-  function cleanLibraryMeta(data) {
+  function cleanLibraryEntry(data) {
     return {
       title: cleanText(data.title, 180),
       description: cleanText(data.description, 1600),
-      category: cleanText(data.category, 40)
+      category: cleanText(data.category, 40),
+      url: cleanText(data.url, 1200),
+      fileName: cleanText(data.fileName, 255),
+      fileType: cleanText(data.fileType, 120),
+      fileSize: Math.max(0, Math.min(Number(data.fileSize) || 0, 500 * 1024 * 1024))
     };
   }
 
-  function saveLibraryMeta(driveId, data) {
-    var id = cleanText(driveId, 200);
-    if (!id) return Promise.reject(new Error("معرّف الملف مفقود"));
-    var payload = cleanLibraryMeta(data);
+  function newLibraryId() {
+    return "lib_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+  }
+
+  function sortLibrary(items) {
+    return items.slice().sort(function (a, b) {
+      var aTime = new Date(a.updatedAt || a.createdAt || 0).getTime() || 0;
+      var bTime = new Date(b.updatedAt || b.createdAt || 0).getTime() || 0;
+      return bTime - aTime;
+    });
+  }
+
+  function saveLibraryEntry(data, id) {
+    var payload = cleanLibraryEntry(data);
+    if (!payload.title) return Promise.reject(new Error("عنوان الملف مطلوب"));
+    if (!payload.url) return Promise.reject(new Error("ملف المكتبة غير مرفق"));
+    var entryId = cleanText(id, 200) || newLibraryId();
+    var now = new Date().toISOString();
     if (mode === "cloud") {
-      var entry = Object.assign({ id: id }, payload, { updatedAt: new Date().toISOString() });
-      var next = cloudCache.library.filter(function (item) { return item.id !== id; }).concat([entry]);
+      var list = cloudCache.library.slice();
+      var existing = list.find(function (item) { return item.id === entryId; });
+      var entry = Object.assign({}, payload, {
+        id: entryId,
+        createdAt: existing && existing.createdAt ? existing.createdAt : now,
+        updatedAt: now
+      });
+      var next = sortLibrary(list.filter(function (item) { return item.id !== entryId; }).concat([entry]));
       return db.collection("settings").doc("site").set({
         library: next,
         updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
@@ -540,26 +565,24 @@
         emit("library", next);
       });
     }
-    var item = demoState.library.find(function (entry) { return entry.id === id; });
+    var item = demoState.library.find(function (entry) { return entry.id === entryId; });
     if (item) {
-      Object.assign(item, payload, { updatedAt: new Date().toISOString() });
+      Object.assign(item, payload, { updatedAt: now });
     } else {
-      demoState.library.push(Object.assign({ id: id, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, payload));
+      demoState.library.push(Object.assign({}, payload, { id: entryId, createdAt: now, updatedAt: now }));
     }
     demoVersion += 1;
     broadcastState();
-    emit("library", clone(demoState.library));
+    emit("library", sortLibrary(clone(demoState.library)));
     return Promise.resolve();
   }
 
-  function deleteLibraryMeta(driveIds) {
-    var ids = (Array.isArray(driveIds) ? driveIds : [driveIds]).map(function (id) { return cleanText(id, 200); }).filter(Boolean);
-    if (!ids.length) return Promise.resolve();
-    var remove = {};
-    ids.forEach(function (id) { remove[id] = true; });
+  function deleteLibraryEntry(id) {
+    var targetId = cleanText(id, 200);
+    if (!targetId) return Promise.resolve();
     if (mode === "cloud") {
-      if (!cloudCache.library.some(function (item) { return remove[item.id]; })) return Promise.resolve();
-      var next = cloudCache.library.filter(function (item) { return !remove[item.id]; });
+      if (!cloudCache.library.some(function (item) { return item.id === targetId; })) return Promise.resolve();
+      var next = cloudCache.library.filter(function (item) { return item.id !== targetId; });
       cloudCache.library = next;
       return db.collection("settings").doc("site").set({
         library: next,
@@ -568,7 +591,7 @@
         emit("library", next);
       });
     }
-    demoState.library = demoState.library.filter(function (entry) { return !remove[entry.id]; });
+    demoState.library = demoState.library.filter(function (entry) { return entry.id !== targetId; });
     demoVersion += 1;
     broadcastState();
     emit("library", clone(demoState.library));
@@ -576,7 +599,7 @@
   }
 
   function saveSettings(patch) {
-    var allowed = ["instagram", "twitter", "libraryDrive", "driveClientId"];
+    var allowed = ["instagram", "twitter", "cloudinaryCloud", "cloudinaryPreset"];
     var payload = {};
     allowed.forEach(function (key) {
       if (Object.prototype.hasOwnProperty.call(patch, key)) payload[key] = cleanText(patch[key], 600);
@@ -621,8 +644,8 @@
     addAnnouncement: addAnnouncement,
     updateAnnouncement: updateAnnouncement,
     deleteAnnouncement: deleteAnnouncement,
-    saveLibraryMeta: saveLibraryMeta,
-    deleteLibraryMeta: deleteLibraryMeta,
+    saveLibraryEntry: saveLibraryEntry,
+    deleteLibraryEntry: deleteLibraryEntry,
     saveSettings: saveSettings
   };
 })();

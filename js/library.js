@@ -5,28 +5,13 @@
   var Store = window.FarooqStore;
   var config = window.SITE_CONFIG || {};
 
-  var DRIVE_API = "https://www.googleapis.com/drive/v3/files";
-  var FOLDER_MIME = "application/vnd.google-apps.folder";
-
   var state = {
     announcements: [],
-    libraryMeta: [],
-    settings: Object.assign({}, config.defaults || {}),
+    items: [],
+    loadedAnnouncements: false,
+    loadedLibrary: false,
     query: "",
-    loaded: false,
-    drive: {
-      apiKey: String(config.driveApiKey || "").trim(),
-      rootId: "",
-      stack: [],
-      items: [],
-      cache: {},
-      rootCount: null,
-      loading: false,
-      error: "",
-      syncedAt: null,
-      query: "",
-      token: 0
-    }
+    libraryQuery: ""
   };
 
   var els = {};
@@ -36,15 +21,6 @@
       return new Intl.NumberFormat("ar-OM").format(count);
     } catch (error) {
       return String(count);
-    }
-  }
-
-  function timeLabel(date) {
-    if (!date) return "";
-    try {
-      return new Intl.DateTimeFormat("ar-OM", { hour: "numeric", minute: "2-digit" }).format(date);
-    } catch (error) {
-      return "";
     }
   }
 
@@ -70,366 +46,192 @@
       .trim();
   }
 
-  function extractFolderId(raw) {
-    var text = String(raw == null ? "" : raw).trim();
-    if (!text) return "";
-    var match = text.match(/\/folders\/([A-Za-z0-9_-]+)/) || text.match(/[?&]id=([A-Za-z0-9_-]+)/);
-    return match ? match[1] : "";
-  }
-
-  function typeInfo(mimeType, name) {
-    var mime = String(mimeType || "");
-    var lower = String(name || "").toLowerCase();
-    if (mime === FOLDER_MIME) return { kind: "folder", label: "مجلد", icon: "folder", cta: "فتح المجلد" };
-    if (mime === "application/pdf" || /\.pdf$/.test(lower)) return { kind: "pdf", label: "PDF", icon: "file", cta: "معاينة الملف" };
-    if (mime.indexOf("image/") === 0) return { kind: "image", label: "صورة", icon: "image", cta: "معاينة الصورة" };
-    if (mime.indexOf("video/") === 0) return { kind: "video", label: "فيديو", icon: "video", cta: "معاينة الفيديو" };
-    if (mime.indexOf("audio/") === 0) return { kind: "audio", label: "صوت", icon: "music", cta: "معاينة الملف" };
-    if (mime === "application/vnd.google-apps.spreadsheet") return { kind: "sheet", label: "جدول", icon: "grid", cta: "معاينة الجدول" };
-    if (mime === "application/vnd.google-apps.presentation") return { kind: "slides", label: "عرض", icon: "presentation", cta: "معاينة العرض" };
-    if (/zip|rar|7z|tar|gzip/.test(mime) || /\.(zip|rar|7z)$/.test(lower)) return { kind: "archive", label: "أرشيف", icon: "archive", cta: "معاينة الملف" };
+  function typeInfo(item) {
+    var mime = String(item.fileType || "").toLowerCase();
+    var name = String(item.fileName || item.url || "").toLowerCase();
+    var source = mime + " " + name;
+    if (/pdf/.test(mime) || /\.pdf(\?|$)/.test(name)) return { kind: "pdf", label: "PDF", icon: "file", cta: "معاينة الملف" };
+    if (/^image\//.test(mime) || /\.(png|jpe?g|gif|webp|svg)(\?|$)/.test(name)) return { kind: "image", label: "صورة", icon: "image", cta: "معاينة الصورة" };
+    if (/^video\//.test(mime) || /\.(mp4|webm|mov)(\?|$)/.test(name)) return { kind: "video", label: "فيديو", icon: "video", cta: "معاينة الفيديو" };
+    if (/^audio\//.test(mime) || /\.(mp3|wav|ogg)(\?|$)/.test(name)) return { kind: "audio", label: "صوت", icon: "music", cta: "معاينة الملف" };
+    if (/spreadsheet|excel|\.xlsx?(\?|$)/.test(source)) return { kind: "sheet", label: "جدول", icon: "grid", cta: "معاينة الملف" };
+    if (/presentation|powerpoint|\.pptx?(\?|$)/.test(source)) return { kind: "slides", label: "عرض", icon: "presentation", cta: "معاينة الملف" };
+    if (/zip|rar|7z|tar|gzip/.test(mime) || /\.(zip|rar|7z)(\?|$)/.test(name)) return { kind: "archive", label: "أرشيف", icon: "archive", cta: "تحميل الملف" };
     return { kind: "file", label: "ملف", icon: "file", cta: "معاينة الملف" };
   }
 
-  function metadataFor(item) {
-    return state.libraryMeta.find(function (entry) { return entry.id === item.id; }) || null;
-  }
-
-  function displayName(item) {
-    var name = String(item.name || "ملف بدون اسم");
-    if (item.mimeType === FOLDER_MIME) return name;
-    return name.replace(/\.[A-Za-z0-9]{2,5}$/, "") || name;
-  }
-
-  function fallbackDescription(info) {
-    if (info.kind === "folder") return "مجلد من مكتبة المدرسة يضم مجموعة من الملفات والوثائق.";
-    if (info.kind === "pdf") return "وثيقة PDF من مكتبة مدرسة الفاروق، يمكن معاينتها مباشرة داخل الموقع.";
-    if (info.kind === "image") return "صورة من أرشيف مكتبة مدرسة الفاروق.";
-    if (info.kind === "video") return "مقطع مرئي من مكتبة مدرسة الفاروق، يمكن تشغيله داخل الموقع.";
-    if (info.kind === "audio") return "مقطع صوتي من مكتبة مدرسة الفاروق.";
-    if (info.kind === "sheet") return "جدول بيانات من مكتبة مدرسة الفاروق.";
-    if (info.kind === "slides") return "عرض تقديمي من مكتبة مدرسة الفاروق.";
-    if (info.kind === "archive") return "ملف مضغوط من مكتبة مدرسة الفاروق.";
-    return "ملف من مكتبة مدرسة الفاروق، يمكن معاينته مباشرة.";
-  }
-
-  function driveMatches(item) {
-    var query = normalizeArabic(state.drive.query);
+  function libraryMatches(item) {
+    var query = normalizeArabic(state.libraryQuery);
     if (!query) return true;
-    var meta = metadataFor(item) || {};
-    var haystack = [item.name, meta.title, meta.description, meta.category].join(" ");
+    var haystack = [item.title, item.description, item.category, item.fileName].join(" ");
     return normalizeArabic(haystack).indexOf(query) !== -1;
   }
 
-  function currentFolder() {
-    var stack = state.drive.stack;
-    return stack.length ? stack[stack.length - 1] : null;
+  function sortedItems() {
+    return state.items.slice().sort(function (a, b) {
+      var aTime = UI.toDate(a.updatedAt || a.createdAt);
+      var bTime = UI.toDate(b.updatedAt || b.createdAt);
+      return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
+    });
   }
 
   function updateHero() {
-    var drive = state.drive;
-    if (drive.rootCount == null) {
-      els.fileCount.textContent = drive.error ? "تعذر تحميل ملفات المكتبة" : "جارٍ تحميل محتوى المكتبة…";
+    if (!state.loadedLibrary) {
+      els.fileCount.textContent = "جارٍ تحميل محتوى المكتبة…";
+    } else if (!state.items.length) {
+      els.fileCount.textContent = "المكتبة فارغة حاليًا";
     } else {
-      els.fileCount.textContent = "عناصر المكتبة: " + countLabel(drive.rootCount);
+      els.fileCount.textContent = "ملفات المكتبة: " + countLabel(state.items.length);
     }
 
-    var latest = drive.syncedAt || null;
-    var announcementDate = state.announcements.length ? UI.toDate(state.announcements[0].date) : null;
-    if (announcementDate && (!latest || announcementDate.getTime() > latest.getTime())) latest = announcementDate;
+    var latest = null;
+    state.items.forEach(function (item) {
+      var date = UI.toDate(item.updatedAt || item.createdAt);
+      if (date && (!latest || date.getTime() > latest.getTime())) latest = date;
+    });
+    state.announcements.forEach(function (item) {
+      var date = UI.toDate(item.date);
+      if (date && (!latest || date.getTime() > latest.getTime())) latest = date;
+    });
     els.lastUpdate.textContent = latest ? "آخر تحديث: " + UI.formatDate(latest, "short") : "آخر تحديث: —";
   }
 
-  function renderCrumbs() {
-    var stack = state.drive.stack;
-    els.driveCrumbs.innerHTML = stack.map(function (crumb, index) {
-      var current = index === stack.length - 1;
-      var label = UI.escapeHtml(crumb.name || "المكتبة");
-      if (current) {
-        return '<span class="drive-crumb is-current" aria-current="page">' + label + "</span>";
+  function cardCover(item, info) {
+    if (info.kind === "image") {
+      var image = UI.safeImage(item.url);
+      if (image) {
+        return '<span class="drive-card__cover" data-cover-kind="image">' +
+          '<img src="' + UI.escapeHtml(image) + '" alt="" loading="lazy">' +
+          "</span>";
       }
-      return '<button type="button" class="drive-crumb" data-crumb-index="' + index + '">' + label + "</button>";
-    }).join('<span class="drive-crumb-sep" aria-hidden="true">' + window.icon("chevron-left") + "</span>");
+    }
+    return '<span class="drive-card__cover drive-card__cover--' + info.kind + '" data-cover-kind="' + info.kind + '">' +
+      '<span class="drive-card__cover-icon">' + window.icon(info.icon) + "</span>" +
+      "</span>";
   }
 
-  function driveCard(item, index) {
-    var info = typeInfo(item.mimeType, item.name);
-    var meta = metadataFor(item) || {};
-    var title = meta.title || displayName(item);
-    var description = meta.description || fallbackDescription(info);
-    var category = meta.category || "";
+  function libraryCard(item, index) {
+    var info = typeInfo(item);
+    var title = item.title || item.fileName || "ملف من المكتبة";
+    var description = item.description || "ملف من مكتبة مدرسة الفاروق، يمكن معاينته أو تحميله مباشرة.";
     var details = [];
-    if (item.modifiedTime) details.push("<span>" + window.icon("calendar") + UI.escapeHtml(UI.formatDate(item.modifiedTime, "short")) + "</span>");
-    if (item.size) details.push("<span>" + UI.escapeHtml(formatSize(item.size)) + "</span>");
+    var date = item.updatedAt || item.createdAt;
+    if (date) details.push("<span>" + window.icon("calendar") + UI.escapeHtml(UI.formatDate(date, "short")) + "</span>");
+    if (item.fileSize) details.push("<span>" + UI.escapeHtml(formatSize(item.fileSize)) + "</span>");
 
-    var thumbnail = UI.safeImage(item.thumbnailLink || "");
-    var cover = thumbnail
-      ? '<span class="drive-card__cover" data-cover-kind="' + info.kind + '">' +
-        '<img src="' + UI.escapeHtml(thumbnail) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' +
-        "</span>"
-      : '<span class="drive-card__cover drive-card__cover--' + info.kind + '" data-cover-kind="' + info.kind + '">' +
-        '<span class="drive-card__cover-icon">' + window.icon(info.icon) + "</span>" +
-        "</span>";
-
-    return '<button type="button" class="drive-card drive-card--' + info.kind + '" data-drive-id="' + UI.escapeHtml(item.id) + '" data-drive-kind="' + info.kind + '" style="--i:' + Math.min(index, 8) + '">' +
-      cover +
+    return '<button type="button" class="drive-card drive-card--' + info.kind + '" data-library-id="' + UI.escapeHtml(item.id) + '" style="--i:' + Math.min(index, 8) + '">' +
+      cardCover(item, info) +
       '<span class="drive-card__body">' +
       '<span class="drive-card__badges">' +
-      (category ? '<span class="drive-card__type">' + UI.escapeHtml(category) + "</span>" : "") +
+      (item.category ? '<span class="drive-card__type">' + UI.escapeHtml(item.category) + "</span>" : "") +
       '<span class="drive-card__format">' + UI.escapeHtml(info.label) + "</span>" +
       "</span>" +
       '<span class="drive-card__name">' + UI.escapeHtml(title) + "</span>" +
       '<span class="drive-card__desc">' + UI.escapeHtml(description) + "</span>" +
       '<span class="drive-card__meta">' + details.join("") + "</span>" +
-      '<span class="drive-card__cta">' + window.icon(info.kind === "folder" ? "arrow-left" : "eye") + info.cta + "</span>" +
+      '<span class="drive-card__cta">' + window.icon("eye") + info.cta + "</span>" +
       "</span>" +
       "</button>";
   }
 
-  function wireDriveCovers() {
-    els.driveGrid.querySelectorAll(".drive-card__cover img").forEach(function (image) {
+  function wireCovers() {
+    els.grid.querySelectorAll(".drive-card__cover img").forEach(function (image) {
       image.addEventListener("error", function () {
         var cover = image.closest(".drive-card__cover");
         if (!cover) return;
-        var kind = cover.getAttribute("data-cover-kind") || "file";
-        var iconsByKind = { folder: "folder", pdf: "file", image: "image", video: "video", audio: "music", sheet: "grid", slides: "presentation", archive: "archive" };
-        cover.classList.add("drive-card__cover--" + kind);
-        cover.innerHTML = '<span class="drive-card__cover-icon">' + window.icon(iconsByKind[kind] || "file") + "</span>";
+        cover.classList.add("drive-card__cover--image");
+        cover.innerHTML = '<span class="drive-card__cover-icon">' + window.icon("image") + "</span>";
       });
     });
   }
 
-  function driveEmpty(icon, title, text, withRetry) {
+  function emptyCard(icon, title, text) {
     return '<div class="drive-empty">' +
       window.icon(icon) +
       "<h3>" + UI.escapeHtml(title) + "</h3>" +
       "<p>" + UI.escapeHtml(text) + "</p>" +
-      (withRetry ? '<button type="button" class="btn btn--sm btn--ghost" data-drive-retry>' + window.icon("refresh") + " إعادة المحاولة</button>" : "") +
       "</div>";
   }
 
-  function renderDriveStatus() {
-    var drive = state.drive;
-    var total = drive.items.length;
-    var shown = drive.items.filter(driveMatches).length;
-    var text;
-    if (drive.loading) {
-      text = drive.items.length ? "جارٍ تحديث الملفات…" : "جارٍ تحميل الملفات…";
-    } else if (drive.error) {
-      text = drive.error;
-    } else if (drive.query) {
-      text = "نتائج البحث: " + countLabel(shown) + " من " + countLabel(total) + " عنصرًا";
-    } else {
-      text = "عرض " + countLabel(total) + " عنصرًا";
-      if (drive.syncedAt) text += " — آخر مزامنة " + timeLabel(drive.syncedAt);
-    }
-    els.driveStatus.textContent = text;
-  }
-
-  function renderDrive() {
-    renderCrumbs();
-    renderDriveStatus();
-
-    var drive = state.drive;
-    if (!drive.items.length && drive.loading) {
-      renderDriveSkeleton();
-      return;
-    }
-
-    if (!drive.items.length && drive.error) {
-      els.driveGrid.innerHTML = driveEmpty("alert", "تعذر عرض ملفات المكتبة", "لم نتمكن من جلب محتوى المجلد الرسمي الآن. أعد المحاولة، أو تصفح النسخة المضمّنة أدناه.", true);
-      return;
-    }
-
-    if (!drive.items.length) {
-      els.driveGrid.innerHTML = driveEmpty("folder", "هذا المجلد فارغ حاليًا", "ستظهر الملفات هنا فور إضافتها إلى المجلد الرسمي للمكتبة.", false);
-      return;
-    }
-
-    var filtered = drive.items.filter(driveMatches);
-    if (!filtered.length) {
-      els.driveGrid.innerHTML = driveEmpty("search", "لا توجد ملفات مطابقة", "جرّب كلمة بحث أخرى أو امسح حقل البحث لعرض كل الملفات.", false);
-      return;
-    }
-
-    els.driveGrid.innerHTML = filtered.map(driveCard).join("");
-    wireDriveCovers();
-  }
-
-  function renderDriveSkeleton() {
-    var html = "";
-    for (var i = 0; i < 8; i += 1) html += '<div class="drive-skeleton" aria-hidden="true"></div>';
-    els.driveGrid.innerHTML = html;
-  }
-
-  function setRefreshing(loading) {
-    [els.refreshBtn, els.sideRefresh].forEach(function (button) {
-      if (!button) return;
-      button.disabled = loading;
-      button.setAttribute("aria-busy", loading ? "true" : "false");
-    });
-  }
-
-  function hideFallback() {
-    els.driveFallback.hidden = true;
-    els.driveFrame.removeAttribute("src");
-    els.driveAlert.classList.remove("is-visible");
-  }
-
-  function showFallback(message) {
-    els.driveAlertText.textContent = message;
-    els.driveAlert.classList.add("is-visible");
-    var fallbackUrl = "https://drive.google.com/embeddedfolderview?id=" + encodeURIComponent(state.drive.rootId) + "#grid";
-    if (els.driveFrame.getAttribute("src") !== fallbackUrl) els.driveFrame.src = fallbackUrl;
-    els.driveFallback.hidden = false;
-    els.driveNoteText.textContent = "تعذر الاتصال المباشر — تُعرض النسخة المضمّنة";
-  }
-
-  function setDriveError(message) {
-    state.drive.loading = false;
-    state.drive.error = message;
-    setRefreshing(false);
-    renderDrive();
-    showFallback(message);
-    updateHero();
-  }
-
-  function driveRequest(folderId) {
-    var params = new URLSearchParams({
-      q: "'" + folderId + "' in parents and trashed=false",
-      fields: "files(id,name,mimeType,size,modifiedTime,thumbnailLink)",
-      orderBy: "folder,name",
-      pageSize: "1000",
-      key: state.drive.apiKey
-    });
-    return fetch(DRIVE_API + "?" + params.toString(), { cache: "no-store" }).then(function (response) {
-      return response.json().catch(function () { return {}; }).then(function (data) {
-        if (!response.ok || data.error) {
-          throw new Error((data.error && data.error.message) || "drive-request-failed");
-        }
-        return data.files || [];
-      });
-    });
-  }
-
-  function loadFolder(folderId, options) {
-    var drive = state.drive;
-    var force = Boolean(options && options.force);
-
-    if (!folderId) {
-      setDriveError("لم يتم ضبط مجلد المكتبة الرسمي بعد.");
-      return;
-    }
-    if (!drive.apiKey) {
-      setDriveError("لم يتم ضبط مفتاح الوصول إلى ملفات المكتبة.");
-      return;
-    }
-
-    var cached = force ? null : drive.cache[folderId];
-    if (cached) {
-      drive.items = cached.items;
-      drive.syncedAt = cached.at;
-      if (folderId === drive.rootId) drive.rootCount = cached.items.length;
-    } else {
-      drive.items = [];
-    }
-
-    drive.loading = true;
-    drive.error = "";
-    drive.token += 1;
-    var token = drive.token;
-
-    setRefreshing(true);
-    renderDrive();
-    updateHero();
-
-    driveRequest(folderId).then(function (files) {
-      if (token !== state.drive.token) return;
-      drive.cache[folderId] = { items: files, at: new Date() };
-      if (folderId === drive.rootId) drive.rootCount = files.length;
-      drive.items = files;
-      drive.syncedAt = new Date();
-      drive.loading = false;
-      drive.error = "";
-      els.driveNoteText.textContent = "متزامنة مع المجلد الرسمي لمدرسة الفاروق";
-      if (folderId === drive.rootId) hideFallback();
-      setRefreshing(false);
-      renderDrive();
+  function renderLibrary() {
+    if (!state.loadedLibrary) {
+      els.status.textContent = "جارٍ تحميل محتوى المكتبة…";
       updateHero();
-    }).catch(function (error) {
-      if (token !== state.drive.token) return;
-      drive.loading = false;
-      if (cached) {
-        drive.error = "تعذر تحديث الملفات الآن — تُعرض آخر نسخة محمّلة.";
-        setRefreshing(false);
-        renderDrive();
-        updateHero();
-        return;
-      }
-      setDriveError("تعذر الاتصال بمجلد المكتبة الرسمي. تحقق من الاتصال بالإنترنت ثم أعد المحاولة.");
-    });
-  }
+      return;
+    }
 
-  function loadRootName() {
-    var rootId = state.drive.rootId;
-    if (!rootId || !state.drive.apiKey) return;
-    var url = DRIVE_API + "/" + encodeURIComponent(rootId) + "?fields=name&key=" + encodeURIComponent(state.drive.apiKey);
-    fetch(url, { cache: "no-store" }).then(function (response) {
-      return response.json();
-    }).then(function (data) {
-      if (!data || !data.name) return;
-      var root = state.drive.stack[0];
-      if (root && root.id === rootId) {
-        root.name = data.name;
-        renderCrumbs();
-      }
-    }).catch(function () { return null; });
-  }
+    var items = sortedItems();
+    var filtered = items.filter(libraryMatches);
 
-  function openFolder(item) {
-    state.drive.stack.push({ id: item.id, name: item.name || "مجلد" });
-    state.drive.query = "";
-    els.driveSearch.value = "";
-    loadFolder(item.id);
-  }
+    if (!items.length) {
+      els.status.textContent = "المكتبة فارغة حاليًا";
+      els.grid.innerHTML = emptyCard("folder", "لا توجد ملفات في المكتبة بعد", "ستظهر ملفات المدرسة هنا فور إضافتها من إدارة المدرسة.");
+      updateHero();
+      return;
+    }
 
-  function navigateToCrumb(index) {
-    var stack = state.drive.stack;
-    if (index < 0 || index >= stack.length - 1) return;
-    state.drive.stack = stack.slice(0, index + 1);
-    state.drive.query = "";
-    els.driveSearch.value = "";
-    loadFolder(state.drive.stack[state.drive.stack.length - 1].id);
-  }
+    if (!filtered.length) {
+      els.status.textContent = "لا توجد نتائج مطابقة";
+      els.grid.innerHTML = emptyCard("search", "لا توجد ملفات مطابقة", "جرّب كلمة بحث أخرى أو امسح حقل البحث لعرض كل الملفات.");
+      updateHero();
+      return;
+    }
 
-  function refreshDrive() {
-    var folder = currentFolder();
-    if (!folder) return;
-    loadFolder(folder.id, { force: true });
+    els.status.textContent = state.libraryQuery
+      ? "نتائج البحث: " + countLabel(filtered.length) + " من " + countLabel(items.length) + " ملفًا"
+      : "عرض " + countLabel(items.length) + " ملفًا";
+    els.grid.innerHTML = filtered.map(libraryCard).join("");
+    wireCovers();
+    updateHero();
   }
 
   function clearPreview() {
     els.previewFrame.removeAttribute("src");
+    els.previewImage.removeAttribute("src");
+    els.previewImage.hidden = true;
+    els.previewFrame.hidden = true;
+    els.previewFallback.hidden = true;
     els.previewLoading.classList.remove("is-hidden");
     window.clearTimeout(clearPreview.timer);
   }
 
   function openPreview(item) {
-    var info = typeInfo(item.mimeType, item.name);
-    var meta = [info.label];
-    if (item.size) meta.push(formatSize(item.size));
-    if (item.modifiedTime) meta.push(UI.formatDate(item.modifiedTime, "short"));
+    var url = UI.safeLink(item.url);
+    if (!url) {
+      UI.showToast("رابط الملف غير متاح حاليًا.", "error");
+      return;
+    }
 
-    els.previewTitle.textContent = item.name || "معاينة الملف";
+    var info = typeInfo(item);
+    var meta = [info.label];
+    if (item.category) meta.push(item.category);
+    if (item.fileSize) meta.push(formatSize(item.fileSize));
+    var date = item.updatedAt || item.createdAt;
+    if (date) meta.push(UI.formatDate(date, "short"));
+
+    els.previewTitle.textContent = item.title || item.fileName || "ملف المكتبة";
     els.previewMeta.textContent = meta.join(" · ");
+    els.previewDownload.href = url;
     els.previewLoading.classList.remove("is-hidden");
-    els.previewFrame.onload = function () {
+    els.previewFrame.hidden = true;
+    els.previewImage.hidden = true;
+    els.previewFallback.hidden = true;
+
+    if (info.kind === "pdf") {
+      els.previewFrame.hidden = false;
+      els.previewFrame.src = url;
+    } else if (info.kind === "image") {
+      els.previewImage.hidden = false;
+      els.previewImage.src = url;
+    } else {
+      els.previewFallback.hidden = false;
       els.previewLoading.classList.add("is-hidden");
-    };
-    els.previewFrame.src = "https://drive.google.com/file/d/" + encodeURIComponent(item.id) + "/preview";
+    }
+
     clearPreview.timer = window.setTimeout(function () {
       els.previewLoading.classList.add("is-hidden");
-    }, 4500);
+    }, 6000);
+
     UI.openDialog(els.previewDialog);
   }
 
@@ -478,7 +280,7 @@
   }
 
   function renderAnnouncements() {
-    if (!state.loaded) return;
+    if (!state.loadedAnnouncements) return;
 
     var filtered = state.announcements.filter(matchesAnnouncement);
     var latestId = state.announcements.length ? state.announcements[0].id : null;
@@ -499,31 +301,6 @@
     updateHero();
   }
 
-  function applySettings(settings) {
-    state.settings = settings || {};
-    var folderId = extractFolderId(state.settings.libraryDrive) || extractFolderId((config.defaults || {}).libraryDrive);
-
-    if (!folderId) {
-      setDriveError("لم يتم ضبط مجلد المكتبة الرسمي بعد.");
-      return;
-    }
-    if (folderId === state.drive.rootId) return;
-
-    state.drive.rootId = folderId;
-    state.drive.stack = [{ id: folderId, name: "المكتبة" }];
-    state.drive.items = [];
-    state.drive.cache = {};
-    state.drive.rootCount = null;
-    state.drive.syncedAt = null;
-    state.drive.error = "";
-    state.drive.query = "";
-    if (els.driveSearch) els.driveSearch.value = "";
-
-    hideFallback();
-    loadRootName();
-    loadFolder(folderId, { force: true });
-  }
-
   function applyOfficialLinks() {
     var defaults = config.defaults || {};
     [["school", defaults.schoolUrl], ["ministry", defaults.ministryUrl], ["vision", defaults.visionUrl]].forEach(function (pair) {
@@ -536,39 +313,22 @@
   }
 
   function bind() {
-    els.driveSearch.addEventListener("input", function () {
-      state.drive.query = els.driveSearch.value.trim();
-      renderDrive();
-    });
-
-    els.driveGrid.addEventListener("click", function (event) {
-      var retry = event.target.closest("[data-drive-retry]");
-      if (retry) {
-        var folder = currentFolder();
-        if (folder) loadFolder(folder.id, { force: true });
-        return;
-      }
-      var card = event.target.closest("[data-drive-id]");
-      if (!card) return;
-      var item = state.drive.items.find(function (entry) {
-        return entry.id === card.getAttribute("data-drive-id");
-      });
-      if (!item) return;
-      if (card.getAttribute("data-drive-kind") === "folder") openFolder(item);
-      else openPreview(item);
-    });
-
-    els.driveCrumbs.addEventListener("click", function (event) {
-      var crumb = event.target.closest("[data-crumb-index]");
-      if (!crumb) return;
-      navigateToCrumb(Number(crumb.getAttribute("data-crumb-index")));
-    });
-
-    els.refreshBtn.addEventListener("click", refreshDrive);
-    els.sideRefresh.addEventListener("click", refreshDrive);
-
     els.search.addEventListener("input", function () {
-      state.query = els.search.value.trim();
+      state.libraryQuery = els.search.value.trim();
+      renderLibrary();
+    });
+
+    els.grid.addEventListener("click", function (event) {
+      var card = event.target.closest("[data-library-id]");
+      if (!card) return;
+      var item = state.items.find(function (entry) {
+        return entry.id === card.getAttribute("data-library-id");
+      });
+      if (item) openPreview(item);
+    });
+
+    els.announcementSearch.addEventListener("input", function () {
+      state.query = els.announcementSearch.value.trim();
       renderAnnouncements();
     });
 
@@ -583,6 +343,16 @@
     els.previewFrame.addEventListener("load", function () {
       els.previewLoading.classList.add("is-hidden");
     });
+
+    els.previewImage.addEventListener("load", function () {
+      els.previewLoading.classList.add("is-hidden");
+    });
+
+    els.previewImage.addEventListener("error", function () {
+      els.previewImage.hidden = true;
+      els.previewFallback.hidden = false;
+      els.previewLoading.classList.add("is-hidden");
+    });
   }
 
   function init() {
@@ -591,66 +361,51 @@
     els = {
       fileCount: document.getElementById("libraryFileCount"),
       lastUpdate: document.getElementById("libraryLastUpdate"),
-      driveCrumbs: document.getElementById("driveCrumbs"),
-      driveSearch: document.getElementById("driveSearch"),
-      driveRefresh: document.getElementById("driveRefresh"),
-      driveStatus: document.getElementById("driveStatus"),
-      driveGrid: document.getElementById("driveGrid"),
-      driveAlert: document.getElementById("driveAlert"),
-      driveAlertText: document.getElementById("driveAlertText"),
-      driveFallback: document.getElementById("driveFallback"),
-      driveFrame: document.getElementById("driveFrame"),
-      driveNoteText: document.getElementById("driveNoteText"),
-      refreshBtn: document.getElementById("driveRefresh"),
-      sideRefresh: document.getElementById("libraryDriveRefresh"),
-      previewDialog: document.getElementById("drivePreviewDialog"),
-      previewTitle: document.getElementById("drivePreviewTitle"),
-      previewMeta: document.getElementById("drivePreviewMeta"),
-      previewFrame: document.getElementById("drivePreviewFrame"),
-      previewLoading: document.getElementById("drivePreviewLoading"),
+      search: document.getElementById("librarySearch"),
+      status: document.getElementById("libraryStatus"),
+      grid: document.getElementById("libraryGrid"),
+      previewDialog: document.getElementById("libraryPreviewDialog"),
+      previewTitle: document.getElementById("libraryPreviewTitle"),
+      previewMeta: document.getElementById("libraryPreviewMeta"),
+      previewFrame: document.getElementById("libraryPreviewFrame"),
+      previewImage: document.getElementById("libraryPreviewImage"),
+      previewFallback: document.getElementById("libraryPreviewFallback"),
+      previewLoading: document.getElementById("libraryPreviewLoading"),
+      previewDownload: document.getElementById("libraryPreviewDownload"),
       list: document.getElementById("announcementsList"),
       boardCount: document.getElementById("boardCount"),
-      search: document.getElementById("announcementSearch"),
+      announcementSearch: document.getElementById("announcementSearch"),
       alert: document.getElementById("libraryAlert"),
       alertText: document.getElementById("libraryAlertText")
     };
 
     bind();
     applyOfficialLinks();
-    applySettings(Object.assign({}, config.defaults || {}));
     updateHero();
 
     Store.subscribeAnnouncements(function (announcements) {
       state.announcements = announcements || [];
-      state.loaded = true;
+      state.loadedAnnouncements = true;
       renderAnnouncements();
     });
 
-    Store.subscribeLibrary(function (libraryMeta) {
-      state.libraryMeta = libraryMeta || [];
-      if (state.drive.rootId) renderDrive();
+    Store.subscribeLibrary(function (items) {
+      state.items = items || [];
+      state.loadedLibrary = true;
+      renderLibrary();
     });
-
-    Store.subscribeSettings(applySettings);
-
-    try {
-      if ("BroadcastChannel" in window) {
-        var libraryChannel = new BroadcastChannel("farooq-library-updates");
-        libraryChannel.onmessage = function () {
-          if (state.drive.rootId) refreshDrive();
-        };
-      }
-    } catch (error) {
-      /* التحديث اللحظي للمكتبة اختياري */
-    }
 
     Store.subscribeStatus(function (status) {
       var hasError = status.connection === "error";
       els.alert.classList.toggle("is-visible", hasError);
       if (hasError) {
         els.alertText.textContent = status.message;
-        if (!state.loaded) {
+        if (!state.loadedAnnouncements) {
           els.list.innerHTML = emptyState("تعذر تحميل إعلانات المكتبة", "تحقق من إعدادات Firebase والصلاحيات، أو أعد تحميل الصفحة.");
+        }
+        if (!state.loadedLibrary) {
+          els.status.textContent = "تعذر تحميل ملفات المكتبة";
+          els.grid.innerHTML = emptyCard("alert", "تعذر عرض ملفات المكتبة", "تحقق من الاتصال بالإنترنت ثم أعد تحميل الصفحة.");
         }
       }
       UI.updateModePills(status.mode);

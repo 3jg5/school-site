@@ -5,40 +5,26 @@
   var Store = window.FarooqStore;
   var config = window.SITE_CONFIG || {};
 
-  var DRIVE_API = "https://www.googleapis.com/drive/v3/files";
-  var DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
-  var FOLDER_MIME = "application/vnd.google-apps.folder";
-  var DRIVE_SCOPE = "openid email profile https://www.googleapis.com/auth/drive";
+  var LIBRARY_MAX_BYTES = 10 * 1024 * 1024;
+  var CLOUDINARY_MAX_BYTES = LIBRARY_MAX_BYTES;
 
   var state = {
     authenticated: false,
     dataStarted: false,
     news: [],
     announcements: [],
-    libraryMeta: [],
+    library: [],
     settings: {},
-    loaded: { news: false, announcements: false, settings: false },
+    loaded: { news: false, announcements: false, library: false, settings: false },
     editingNewsId: null,
     editingAnnouncementId: null,
-    editingDriveItem: null,
+    editingLibraryId: null,
     deleteTarget: null,
     uploadedImage: null,
     existingImage: "",
+    libraryFile: null,
+    libraryExistingUrl: "",
     settingsFilled: false,
-    driveAdmin: {
-      rootId: "",
-      stack: [],
-      items: [],
-      loading: false,
-      error: "",
-      token: "",
-      email: "",
-      tokenExpiresAt: 0,
-      tokenTimer: null,
-      tokenClient: null,
-      tokenClientId: "",
-      connectedAt: null
-    },
     status: Store.getStatus(),
     auth: Store.getAuthState()
   };
@@ -174,16 +160,12 @@
     els.loginScreen.style.display = "none";
     els.adminShell.classList.add("is-visible");
     startData();
-    applyAdminDriveRoot();
-    var folder = currentAdminFolder();
-    if (folder && !state.driveAdmin.loading) loadAdminFolder(folder.id);
     els.addNewsBtn.focus({ preventScroll: true });
   }
 
   function leaveAdmin() {
     var wasAuthenticated = state.authenticated;
     state.authenticated = false;
-    if (state.driveAdmin.token) disconnectDrive(false);
     updateAdminUser(null);
     els.adminShell.classList.remove("is-visible");
     els.loginScreen.style.display = "grid";
@@ -381,9 +363,10 @@
       updateSeedButton();
     });
 
-    Store.subscribeLibrary(function (libraryMeta) {
-      state.libraryMeta = libraryMeta || [];
-      if (state.driveAdmin.rootId) renderAdminDrive();
+    Store.subscribeLibrary(function (library) {
+      state.library = library || [];
+      state.loaded.library = true;
+      renderLibraryList();
     });
 
     Store.subscribeSettings(function (settings) {
@@ -394,7 +377,6 @@
         state.settingsFilled = true;
       }
       refreshStats();
-      applyAdminDriveRoot();
     });
 
     Store.subscribeStatus(handleStatus);
@@ -403,8 +385,8 @@
   function fillSettingsForm() {
     els.settingInstagram.value = state.settings.instagram || "";
     els.settingTwitter.value = state.settings.twitter || "";
-    els.settingDrive.value = state.settings.libraryDrive || "";
-    els.settingDriveClientId.value = state.settings.driveClientId || config.driveClientId || "";
+    els.settingCloudinaryCloud.value = state.settings.cloudinaryCloud || "";
+    els.settingCloudinaryPreset.value = state.settings.cloudinaryPreset || "";
   }
 
   function setTab(name) {
@@ -413,18 +395,12 @@
       tab.classList.toggle("is-active", active);
       tab.setAttribute("aria-selected", active ? "true" : "false");
     });
-    var map = { news: "panelNews", announcements: "panelAnnouncements", drive: "panelDrive", settings: "panelSettings" };
+    var map = { news: "panelNews", announcements: "panelAnnouncements", library: "panelLibrary", settings: "panelSettings" };
     Object.keys(map).forEach(function (key) {
       var panel = document.getElementById(map[key]);
       panel.classList.toggle("is-active", key === name);
       panel.hidden = key !== name;
     });
-
-    if (name === "drive" && state.authenticated) {
-      applyAdminDriveRoot();
-      var folder = currentAdminFolder();
-      if (folder && !state.driveAdmin.loading) loadAdminFolder(folder.id);
-    }
   }
 
   function formatBytes(size) {
@@ -439,719 +415,210 @@
     return formatCount(index === 0 ? Math.round(bytes) : Math.round(bytes * 10) / 10) + " " + units[index];
   }
 
-  function extractFolderId(raw) {
-    var text = String(raw == null ? "" : raw).trim();
-    if (!text) return "";
-    var match = text.match(/\/folders\/([A-Za-z0-9_-]+)/) || text.match(/[?&]id=([A-Za-z0-9_-]+)/);
-    return match ? match[1] : "";
+  function libraryKind(item) {
+    var type = String(item.fileType || "").toLowerCase();
+    var name = String(item.fileName || item.url || "").toLowerCase();
+    if (type.indexOf("pdf") >= 0 || /\.pdf(\?|$)/.test(name)) return { icon: "book-open", label: "PDF" };
+    if (type.indexOf("image/") === 0 || /\.(png|jpe?g|gif|webp|svg)(\?|$)/.test(name)) return { icon: "image", label: "صورة" };
+    if (type.indexOf("word") >= 0 || /\.docx?(\?|$)/.test(name)) return { icon: "file", label: "مستند" };
+    if (type.indexOf("sheet") >= 0 || /\.xlsx?(\?|$)/.test(name)) return { icon: "file", label: "جدول" };
+    if (type.indexOf("presentation") >= 0 || /\.pptx?(\?|$)/.test(name)) return { icon: "file", label: "عرض" };
+    return { icon: "file", label: "ملف" };
   }
 
-  function driveTypeInfo(mimeType, name) {
-    var mime = String(mimeType || "");
-    var lower = String(name || "").toLowerCase();
-    if (mime === FOLDER_MIME) return { kind: "folder", label: "مجلد", icon: "folder" };
-    if (mime === "application/pdf" || /\.pdf$/.test(lower)) return { kind: "pdf", label: "PDF", icon: "file" };
-    if (mime.indexOf("image/") === 0) return { kind: "image", label: "صورة", icon: "image" };
-    if (mime.indexOf("video/") === 0) return { kind: "video", label: "فيديو", icon: "video" };
-    if (mime.indexOf("audio/") === 0) return { kind: "audio", label: "صوت", icon: "music" };
-    if (mime === "application/vnd.google-apps.spreadsheet") return { kind: "sheet", label: "جدول", icon: "grid" };
-    if (mime === "application/vnd.google-apps.presentation") return { kind: "slides", label: "عرض", icon: "presentation" };
-    if (/zip|rar|7z|tar|gzip/.test(mime) || /\.(zip|rar|7z)$/.test(lower)) return { kind: "archive", label: "أرشيف", icon: "archive" };
-    return { kind: "file", label: "ملف", icon: "file" };
+  function libraryMetaText(item) {
+    var kind = libraryKind(item);
+    var parts = [];
+    if (item.category) parts.push('<span class="tag">' + UI.escapeHtml(item.category) + "</span>");
+    parts.push("<span>" + window.icon("calendar") + " " + UI.escapeHtml(UI.formatDate(item.updatedAt || item.createdAt, "short")) + "</span>");
+    if (item.fileSize) parts.push("<span>" + window.icon("file") + " " + UI.escapeHtml(formatBytes(item.fileSize)) + "</span>");
+    parts.push("<span>" + window.icon(kind.icon) + " " + UI.escapeHtml(kind.label) + "</span>");
+    return parts.join("");
   }
 
-  function driveMetaFor(id) {
-    return state.libraryMeta.find(function (entry) { return entry.id === id; }) || null;
-  }
-
-  function driveDisplayName(item) {
-    var meta = driveMetaFor(item.id);
-    if (meta && meta.title) return meta.title;
-    var name = String(item.name || "ملف بدون اسم");
-    if (item.mimeType === FOLDER_MIME) return name;
-    return name.replace(/\.[A-Za-z0-9]{2,5}$/, "") || name;
-  }
-
-  function isDriveConnected() {
-    return Boolean(state.driveAdmin.token) && Date.now() < state.driveAdmin.tokenExpiresAt;
-  }
-
-  function currentAdminFolder() {
-    var stack = state.driveAdmin.stack;
-    return stack.length ? stack[stack.length - 1] : null;
-  }
-
-  function notifyLibraryChanged() {
-    try {
-      if ("BroadcastChannel" in window) {
-        var channel = new BroadcastChannel("farooq-library-updates");
-        channel.postMessage({ type: "changed", at: Date.now() });
-        channel.close();
-      }
-    } catch (error) {
-      /* الإشعار اللحظي اختياري */
+  function renderLibraryList() {
+    if (!state.loaded.library) {
+      els.libraryList.innerHTML = state.status.connection === "error"
+        ? adminEmpty("تعذر تحميل ملفات المكتبة", state.status.message, "alert")
+        : adminLoading("جارٍ تحميل ملفات المكتبة", "يتم جلب المحتوى من قاعدة البيانات.");
+      return;
     }
+
+    if (!state.library.length) {
+      els.libraryList.innerHTML = adminEmpty("المكتبة فارغة", "أضف أول ملف من زر «إضافة ملف» ليظهر في صفحة المكتبة.", "folder");
+      return;
+    }
+
+    els.libraryList.innerHTML = state.library.map(function (item) {
+      var kind = libraryKind(item);
+      var url = UI.safeLink(item.url);
+      return '<div class="admin-row">' +
+        '<span class="admin-row__thumb admin-row__thumb--empty">' + window.icon(kind.icon) + "</span>" +
+        '<div class="admin-row__info">' +
+        '<p class="admin-row__title">' + UI.escapeHtml(item.title || "ملف بدون عنوان") + "</p>" +
+        '<div class="admin-row__meta">' + libraryMetaText(item) + "</div>" +
+        '<p class="admin-row__desc">' + UI.escapeHtml(item.description || "بدون وصف") + "</p>" +
+        "</div>" +
+        '<div class="admin-row__actions">' +
+        (url ? '<a class="icon-btn" href="' + UI.escapeHtml(url) + '" target="_blank" rel="noopener" aria-label="فتح ' + UI.escapeHtml(item.title || "الملف") + '">' + window.icon("eye") + "</a>" : "") +
+        '<button class="icon-btn" type="button" data-edit-library="' + UI.escapeHtml(item.id) + '" aria-label="تعديل ' + UI.escapeHtml(item.title || "الملف") + '">' + window.icon("pen") + "</button>" +
+        '<button class="icon-btn icon-btn--danger" type="button" data-delete-library="' + UI.escapeHtml(item.id) + '" aria-label="حذف ' + UI.escapeHtml(item.title || "الملف") + '">' + window.icon("trash") + "</button>" +
+        "</div></div>";
+    }).join("");
   }
 
-  function driveFriendlyError(error) {
-    var message = String((error && error.message) || "");
-    if (/401|credential|expired|invalid_token/i.test(message)) {
-      return "انتهت جلسة Google. أعد ربط الدرايف ثم حاول مرة أخرى.";
-    }
-    if (/403|permission|insufficient/i.test(message)) {
-      return "ليست لديك صلاحية تعديل هذا المجلد. استخدم حساب Google المالك للمجلد أو حسابًا مُنح صلاحية تعديل.";
-    }
-    if (/404|notFound|not found/i.test(message)) {
-      return "لم يعد العنصر موجودًا في الدرايف. حدّث القائمة ثم أعد المحاولة.";
-    }
-    if (/network|failed to fetch|load failed/i.test(message)) {
-      return "تعذر الاتصال بالدرايف. تحقق من الإنترنت ثم أعد المحاولة.";
-    }
-    return "تعذر تنفيذ العملية في الدرايف. تحقق من الاتصال والصلاحيات.";
+  function openLibraryForm(item) {
+    els.libraryForm.reset();
+    state.editingLibraryId = item ? item.id : null;
+    state.libraryFile = null;
+    state.libraryExistingUrl = (item && item.url) || "";
+    state.libraryExistingFile = item
+      ? { fileName: item.fileName || "", fileType: item.fileType || "", fileSize: item.fileSize || 0 }
+      : null;
+
+    els.libraryFormTitle.textContent = item ? "تعديل بيانات الملف" : "إضافة ملف إلى المكتبة";
+    els.libraryFormSub.textContent = item
+      ? "يمكنك تغيير العنوان والوصف أو استبدال الملف."
+      : "سيظهر الملف في صفحة المكتبة فور الحفظ.";
+    setSubmitLabel(els.librarySubmitBtn, item ? "حفظ التعديلات" : "حفظ الملف");
+
+    els.libraryTitle.value = (item && item.title) || "";
+    els.libraryDescription.value = (item && item.description) || "";
+    els.libraryCategory.value = (item && item.category) || "";
+    els.libraryUrl.value = (item && item.url) || "";
+    els.libraryFileNote.textContent = item && item.fileName
+      ? "الملف الحالي: " + item.fileName
+      : "اختر ملفًا لرفعه عند الحفظ، أو استخدم الرابط المباشر بالأسفل.";
+    els.libraryProgress.hidden = true;
+    els.libraryBar.style.width = "0%";
+
+    UI.openDialog(els.libraryFormDialog);
+    window.setTimeout(function () { els.libraryTitle.focus(); }, 80);
   }
 
-  function updateDriveConnectUI() {
-    var connected = isDriveConnected();
-    els.driveConnectBtn.hidden = connected;
-    els.driveDisconnectBtn.hidden = !connected;
-    els.driveAdminUpload.disabled = !connected;
-    els.driveAdminFolder.disabled = !connected;
-
-    if (connected) {
-      els.driveConnectTitle.textContent = state.driveAdmin.email
-        ? "متصل بحساب " + state.driveAdmin.email
-        : "متصل بحساب Google";
-      els.driveConnectText.textContent = "يمكنك الآن رفع الملفات وإنشاء المجلدات وتعديل الأسماء وحذف العناصر من مجلد المكتبة.";
-      els.driveConnectBadge.textContent = "متصل";
-      els.driveConnectBadge.className = "badge badge--ok";
-      els.driveConnectState.classList.add("is-connected");
-    } else {
-      els.driveConnectTitle.textContent = "لم يتم ربط الدرايف بعد";
-      els.driveConnectText.textContent = "اربط حساب Google المالك للمجلد أو حسابًا لديه صلاحية تعديل، لتتمكن من رفع الملفات وحذفها. يمكنك مشاهدة الملفات وتعديل أوصافها دون ربط.";
-      els.driveConnectBadge.textContent = "غير متصل";
-      els.driveConnectBadge.className = "badge";
-      els.driveConnectState.classList.remove("is-connected");
-    }
+  function cloudinarySettings() {
+    var cloud = String(state.settings.cloudinaryCloud || "").trim();
+    var preset = String(state.settings.cloudinaryPreset || "").trim();
+    return { cloud: cloud, preset: preset, ready: Boolean(cloud && preset) };
   }
 
-  function waitForGis(timeout) {
-    return new Promise(function (resolve) {
-      var started = Date.now();
-      var timer = window.setInterval(function () {
-        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-          window.clearInterval(timer);
-          resolve(true);
-        } else if (Date.now() - started > timeout) {
-          window.clearInterval(timer);
-          resolve(false);
+  function uploadLibraryFile(file, onProgress) {
+    var cloudinary = cloudinarySettings();
+    if (!cloudinary.ready) {
+      return Promise.reject(new Error("أضف اسم حساب Cloudinary واسم الرفع (Preset) من «إعدادات البوابة» أولًا."));
+    }
+    if (file.size > CLOUDINARY_MAX_BYTES) {
+      return Promise.reject(new Error("حجم الملف يتجاوز 10 ميجابايت. اختر ملفًا أصغر."));
+    }
+
+    return new Promise(function (resolve, reject) {
+      var form = new FormData();
+      form.append("file", file);
+      form.append("upload_preset", cloudinary.preset);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudinary.cloud) + "/auto/upload");
+      xhr.upload.onprogress = function (event) {
+        if (event.lengthComputable && typeof onProgress === "function") {
+          onProgress(Math.round((event.loaded / event.total) * 100));
         }
-      }, 250);
-    });
-  }
-
-  function handleDriveToken(response) {
-    if (!response || !response.access_token) {
-      UI.showToast("تعذر ربط الدرايف. أعد المحاولة واختر حساب Google المناسب.", "error");
-      return;
-    }
-    var expiresIn = Number(response.expires_in) || 3600;
-    state.driveAdmin.token = response.access_token;
-    state.driveAdmin.tokenExpiresAt = Date.now() + expiresIn * 1000;
-    state.driveAdmin.connectedAt = new Date();
-    if (state.driveAdmin.tokenTimer) window.clearTimeout(state.driveAdmin.tokenTimer);
-    state.driveAdmin.tokenTimer = window.setTimeout(function () {
-      disconnectDrive(true);
-    }, Math.max(60000, (expiresIn - 120) * 1000));
-
-    updateDriveConnectUI();
-    var folder = currentAdminFolder();
-    if (folder) loadAdminFolder(folder.id);
-    loadAdminRootName();
-
-    fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { Authorization: "Bearer " + response.access_token }
-    }).then(function (result) {
-      return result.ok ? result.json() : null;
-    }).then(function (info) {
-      if (info && info.email) {
-        state.driveAdmin.email = info.email;
-        updateDriveConnectUI();
-      }
-    }).catch(function () { return null; });
-
-    UI.showToast("تم ربط الدرايف. يمكنك الآن رفع الملفات وإدارتها.", "success");
-  }
-
-  function connectDrive() {
-    var clientId = String(state.settings.driveClientId || config.driveClientId || "").trim();
-    if (!clientId) {
-      UI.showToast("أضف معرّف OAuth من تبويب «إعدادات البوابة» أولًا، ثم احفظ الإعدادات وأعد المحاولة.", "error");
-      setTab("settings");
-      return;
-    }
-    setBusy(els.driveConnectBtn, true, "جارٍ فتح نافذة Google…");
-    waitForGis(9000).then(function (ready) {
-      setBusy(els.driveConnectBtn, false);
-      if (!ready) {
-        UI.showToast("تعذر تحميل خدمة Google. تحقق من الإنترنت ثم أعد المحاولة.", "error");
-        return;
-      }
-      if (!state.driveAdmin.tokenClient || state.driveAdmin.tokenClientId !== clientId) {
-        state.driveAdmin.tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope: DRIVE_SCOPE,
-          callback: handleDriveToken,
-          error_callback: function (error) {
-            UI.showToast("تعذر ربط الدرايف: " + ((error && error.message) || "أُلغيت العملية."), "error");
-          }
-        });
-        state.driveAdmin.tokenClientId = clientId;
-      }
-      state.driveAdmin.tokenClient.requestAccessToken({ prompt: "" });
-    });
-  }
-
-  function disconnectDrive(expired) {
-    var token = state.driveAdmin.token;
-    if (token && !expired) {
-      try {
-        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-          window.google.accounts.oauth2.revoke(token, function () {});
+      };
+      xhr.onload = function () {
+        var data = null;
+        try { data = JSON.parse(xhr.responseText); } catch (error) { data = null; }
+        if (xhr.status >= 200 && xhr.status < 300 && data && data.secure_url) {
+          resolve(data);
+          return;
         }
-      } catch (error) {
-        /* الإلغاء المحلي يكفي */
-      }
-    }
-    if (state.driveAdmin.tokenTimer) window.clearTimeout(state.driveAdmin.tokenTimer);
-    state.driveAdmin.token = "";
-    state.driveAdmin.email = "";
-    state.driveAdmin.tokenExpiresAt = 0;
-    state.driveAdmin.tokenTimer = null;
-    updateDriveConnectUI();
-    if (state.driveAdmin.rootId) renderAdminDrive();
-    if (expired) UI.showToast("انتهت جلسة Google. أعد ربط الدرايف لمتابعة الرفع والحذف.", "error");
-  }
-
-  function driveAuthorizedFetch(url, options) {
-    if (!isDriveConnected()) {
-      return Promise.reject(new Error("انتهت جلسة Google. أعد ربط الدرايف."));
-    }
-    var settings = Object.assign({}, options || {});
-    settings.headers = Object.assign({}, settings.headers || {}, {
-      Authorization: "Bearer " + state.driveAdmin.token
-    });
-    return fetch(url, settings).then(function (response) {
-      if (response.status === 401) {
-        disconnectDrive(true);
-        throw new Error("انتهت جلسة Google. أعد ربط الدرايف.");
-      }
-      if (!response.ok) {
-        return response.json().catch(function () { return {}; }).then(function (data) {
-          var error = new Error((data.error && data.error.message) || "drive-http-" + response.status);
-          error.status = response.status;
-          throw error;
-        });
-      }
-      return response;
+        var message = data && data.error && data.error.message
+          ? data.error.message
+          : "تعذر رفع الملف. راجع إعدادات Cloudinary ثم أعد المحاولة.";
+        reject(new Error(message));
+      };
+      xhr.onerror = function () {
+        reject(new Error("تعذر الاتصال بخدمة رفع الملفات. تحقق من الإنترنت."));
+      };
+      xhr.send(form);
     });
   }
 
-  function driveJson(url, options) {
-    return driveAuthorizedFetch(url, options).then(function (response) {
-      return response.json();
-    });
-  }
-
-  function fetchDriveFiles(folderId) {
-    var params = new URLSearchParams({
-      q: "'" + folderId + "' in parents and trashed=false",
-      fields: "files(id,name,mimeType,size,modifiedTime,thumbnailLink)",
-      orderBy: "folder,name",
-      pageSize: "1000"
-    });
-
-    if (isDriveConnected()) {
-      return driveJson(DRIVE_API + "?" + params.toString()).then(function (data) {
-        return data.files || [];
-      });
-    }
-
-    if (!config.driveApiKey) {
-      return Promise.reject(new Error("لم يتم ضبط مفتاح Drive API."));
-    }
-    params.set("key", String(config.driveApiKey));
-    return fetch(DRIVE_API + "?" + params.toString(), { cache: "no-store" }).then(function (response) {
-      return response.json().catch(function () { return {}; }).then(function (data) {
-        if (!response.ok || data.error) {
-          var error = new Error((data.error && data.error.message) || "drive-request-failed");
-          error.status = response.status;
-          throw error;
-        }
-        return data.files || [];
-      });
-    });
-  }
-
-  function listAllDriveChildren(folderId) {
-    var all = [];
-    function page(token) {
-      var params = new URLSearchParams({
-        q: "'" + folderId + "' in parents and trashed=false",
-        fields: "files(id,name,mimeType),nextPageToken",
-        orderBy: "folder,name",
-        pageSize: "1000"
-      });
-      if (token) params.set("pageToken", token);
-      return driveJson(DRIVE_API + "?" + params.toString()).then(function (data) {
-        all = all.concat(data.files || []);
-        return data.nextPageToken ? page(data.nextPageToken) : all;
-      });
-    }
-    return page("");
-  }
-
-  function loadAdminRootName() {
-    var rootId = state.driveAdmin.rootId;
-    if (!rootId) return;
-    var params = new URLSearchParams({ fields: "name" });
-    var request;
-    if (isDriveConnected()) {
-      request = driveJson(DRIVE_API + "/" + encodeURIComponent(rootId) + "?" + params.toString());
-    } else {
-      if (!config.driveApiKey) return;
-      params.set("key", String(config.driveApiKey));
-      request = fetch(DRIVE_API + "/" + encodeURIComponent(rootId) + "?" + params.toString(), { cache: "no-store" }).then(function (response) {
-        return response.json();
-      });
-    }
-    request.then(function (data) {
-      if (!data || !data.name) return;
-      var root = state.driveAdmin.stack[0];
-      if (root && root.id === rootId) {
-        root.name = data.name;
-        renderAdminDriveCrumbs();
-      }
-    }).catch(function () { return null; });
-  }
-
-  function loadAdminFolder(folderId) {
-    var drive = state.driveAdmin;
-    if (!folderId) {
-      drive.error = "لم يتم ضبط مجلد المكتبة الرسمي بعد.";
-      renderAdminDrive();
-      return;
-    }
-    drive.loading = true;
-    drive.error = "";
-    drive.requestToken = (drive.requestToken || 0) + 1;
-    var token = drive.requestToken;
-    renderAdminDrive();
-
-    fetchDriveFiles(folderId).then(function (files) {
-      if (token !== drive.requestToken) return;
-      drive.items = files;
-      drive.loading = false;
-      drive.error = "";
-      renderAdminDrive();
-    }).catch(function (error) {
-      if (token !== drive.requestToken) return;
-      drive.loading = false;
-      drive.error = driveFriendlyError(error);
-      renderAdminDrive();
-    });
-  }
-
-  function renderAdminDriveCrumbs() {
-    var stack = state.driveAdmin.stack;
-    els.driveAdminCrumbs.innerHTML = stack.map(function (crumb, index) {
-      var current = index === stack.length - 1;
-      var label = UI.escapeHtml(crumb.name || "المكتبة");
-      if (current) {
-        return '<span class="drive-crumb is-current" aria-current="page">' + label + "</span>";
-      }
-      return '<button type="button" class="drive-crumb" data-admin-crumb="' + index + '">' + label + "</button>";
-    }).join('<span class="drive-crumb-sep" aria-hidden="true">' + window.icon("chevron-left") + "</span>");
-  }
-
-  function adminDriveRow(item) {
-    var type = driveTypeInfo(item.mimeType, item.name);
-    var meta = driveMetaFor(item.id) || {};
-    var title = driveDisplayName(item);
-    var category = meta.category || type.label;
-    var description = meta.description || "";
-    var connected = isDriveConnected();
-    var thumbnail = UI.safeImage(item.thumbnailLink || "");
-    var thumb = thumbnail
-      ? '<img class="admin-row__thumb" src="' + UI.escapeHtml(thumbnail) + '" alt="" loading="lazy" referrerpolicy="no-referrer">'
-      : '<span class="admin-row__thumb admin-row__thumb--empty">' + window.icon(type.icon) + "</span>";
-    var details = [];
-    if (item.modifiedTime) details.push("<span>" + window.icon("calendar") + " " + UI.escapeHtml(UI.formatDate(item.modifiedTime, "short")) + "</span>");
-    if (item.size) details.push("<span>" + UI.escapeHtml(formatBytes(item.size)) + "</span>");
-
-    return '<div class="admin-row admin-row--drive">' +
-      thumb +
-      '<div class="admin-row__info">' +
-      '<p class="admin-row__title">' + UI.escapeHtml(title) + "</p>" +
-      '<p class="drive-row__desc">' + (description ? UI.escapeHtml(description) : '<span class="drive-row__desc--empty">بدون وصف — أضف وصفًا ليظهر للزوار.</span>') + "</p>" +
-      '<div class="admin-row__meta">' +
-      '<span class="tag">' + UI.escapeHtml(category) + "</span>" +
-      details.join("") +
-      "</div></div>" +
-      '<div class="admin-row__actions">' +
-      (type.kind === "folder" ? '<button class="icon-btn" type="button" data-open-admin-drive="' + UI.escapeHtml(item.id) + '" aria-label="فتح المجلد ' + UI.escapeHtml(title) + '">' + window.icon("arrow-left") + "</button>" : "") +
-      '<button class="icon-btn" type="button" data-edit-admin-drive="' + UI.escapeHtml(item.id) + '" aria-label="تعديل ' + UI.escapeHtml(title) + '">' + window.icon("pen") + "</button>" +
-      '<button class="icon-btn icon-btn--danger" type="button" data-delete-admin-drive="' + UI.escapeHtml(item.id) + '" aria-label="حذف ' + UI.escapeHtml(title) + '"' + (connected ? "" : ' disabled title="اربط حساب Google أولًا"') + ">" + window.icon("trash") + "</button>" +
-      "</div></div>";
-  }
-
-  function wireAdminDriveThumbs() {
-    els.adminDriveList.querySelectorAll("img.admin-row__thumb").forEach(function (image) {
-      image.addEventListener("error", function () {
-        var fallback = document.createElement("span");
-        fallback.className = "admin-row__thumb admin-row__thumb--empty";
-        fallback.innerHTML = window.icon("file");
-        image.replaceWith(fallback);
-      });
-    });
-  }
-
-  function renderAdminDrive() {
-    renderAdminDriveCrumbs();
-    updateDriveConnectUI();
-
-    var drive = state.driveAdmin;
-    var text;
-    if (!drive.rootId) {
-      text = "لم يتم ضبط مجلد المكتبة الرسمي بعد.";
-    } else if (drive.loading) {
-      text = drive.items.length ? "جارٍ تحديث الملفات…" : "جارٍ تحميل الملفات…";
-    } else if (drive.error) {
-      text = drive.error;
-    } else {
-      text = "عرض " + formatCount(drive.items.length) + " عنصرًا";
-      text += isDriveConnected() ? " — متصل بحساب Google" : " — اربط Google للرفع والحذف";
-    }
-    els.driveAdminStatus.textContent = text;
-
-    if (!drive.rootId) {
-      els.adminDriveList.innerHTML = adminEmpty("لم يتم ضبط مجلد المكتبة", "أضف رابط مجلد المكتبة من تبويب إعدادات البوابة.", "folder");
-      return;
-    }
-
-    if (drive.loading && !drive.items.length) {
-      els.adminDriveList.innerHTML = adminLoading("جارٍ تحميل مكتبة الدرايف", "يتم جلب ملفات المجلد الرسمي.");
-      return;
-    }
-
-    if (drive.error && !drive.items.length) {
-      els.adminDriveList.innerHTML = '<div class="admin-empty">' + window.icon("alert") +
-        "<h3>تعذر تحميل مكتبة الدرايف</h3><p>" + UI.escapeHtml(drive.error) + "</p>" +
-        '<button class="btn btn--ghost btn--sm" type="button" data-drive-admin-retry>' + window.icon("refresh") + " إعادة المحاولة</button></div>";
-      return;
-    }
-
-    if (!drive.items.length) {
-      els.adminDriveList.innerHTML = adminEmpty("هذا المجلد فارغ", "ارفع ملفًا جديدًا أو أنشئ مجلدًا فرعيًا للبدء.", "folder");
-      return;
-    }
-
-    els.adminDriveList.innerHTML = drive.items.map(adminDriveRow).join("");
-    wireAdminDriveThumbs();
-  }
-
-  function applyAdminDriveRoot() {
-    var drive = state.driveAdmin;
-    var folderId = extractFolderId(state.settings.libraryDrive) || extractFolderId((config.defaults || {}).libraryDrive);
-    if (!folderId) {
-      drive.rootId = "";
-      drive.stack = [];
-      drive.items = [];
-      drive.error = "لم يتم ضبط مجلد المكتبة الرسمي بعد.";
-      renderAdminDrive();
-      return;
-    }
-    if (folderId === drive.rootId) return;
-    drive.rootId = folderId;
-    drive.stack = [{ id: folderId, name: "المكتبة" }];
-    drive.items = [];
-    drive.error = "";
-    drive.query = "";
-    loadAdminRootName();
-    if (state.authenticated) loadAdminFolder(folderId);
-  }
-
-  function openAdminFolder(item) {
-    if (!item || item.mimeType !== FOLDER_MIME) return;
-    state.driveAdmin.stack.push({ id: item.id, name: driveDisplayName(item) });
-    loadAdminFolder(item.id);
-  }
-
-  function navigateAdminCrumb(index) {
-    var stack = state.driveAdmin.stack;
-    if (index < 0 || index >= stack.length - 1) return;
-    state.driveAdmin.stack = stack.slice(0, index + 1);
-    loadAdminFolder(state.driveAdmin.stack[state.driveAdmin.stack.length - 1].id);
-  }
-
-  function openDriveEdit(item) {
-    if (!item) return;
-    var meta = driveMetaFor(item.id) || {};
-    var type = driveTypeInfo(item.mimeType, item.name);
-    state.editingDriveItem = item;
-    els.driveEditForm.reset();
-    els.driveEditTitleInput.value = meta.title || "";
-    els.driveEditTitleInput.placeholder = "اتركه فارغًا لاستخدام: " + driveDisplayName(item);
-    els.driveEditDescription.value = meta.description || "";
-    els.driveEditCategory.value = meta.category || "";
-    els.driveEditCategory.placeholder = "مثال: " + type.label;
-    els.driveEditDriveName.value = item.name || "";
-    els.driveEditFileField.hidden = !isDriveConnected();
-    els.driveEditSub.textContent = "الملف الحالي: " + item.name + (isDriveConnected() ? " — يمكنك أيضًا تعديل اسمه الفعلي في الدرايف." : ".");
-    setSubmitLabel(els.driveEditSubmit, "حفظ التعديلات");
-    UI.openDialog(els.driveEditDialog);
-    window.setTimeout(function () { els.driveEditTitleInput.focus(); }, 80);
-  }
-
-  function saveDriveEdit(event) {
+  function submitLibraryForm(event) {
     event.preventDefault();
-    var item = state.editingDriveItem;
-    if (!item) return;
+    if (!els.libraryForm.reportValidity()) return;
 
+    var rawUrl = els.libraryUrl.value.trim();
+    if (rawUrl && !UI.safeLink(rawUrl)) {
+      UI.showToast("رابط الملف غير صالح. استخدم رابطًا يبدأ بـ https://", "error");
+      return;
+    }
+
+    var file = state.libraryFile;
+    if (!file && !rawUrl && !state.libraryExistingUrl) {
+      UI.showToast("اختر ملفًا من جهازك أو ألصق رابطًا مباشرًا للملف.", "error");
+      return;
+    }
+
+    var isEditing = Boolean(state.editingLibraryId);
+    var existing = state.libraryExistingFile || { fileName: "", fileType: "", fileSize: 0 };
     var payload = {
-      title: els.driveEditTitleInput.value.trim(),
-      description: els.driveEditDescription.value.trim(),
-      category: els.driveEditCategory.value.trim()
+      title: els.libraryTitle.value.trim(),
+      description: els.libraryDescription.value.trim(),
+      category: els.libraryCategory.value.trim(),
+      url: rawUrl || state.libraryExistingUrl,
+      fileName: existing.fileName,
+      fileType: existing.fileType,
+      fileSize: existing.fileSize
     };
-    var newName = els.driveEditDriveName.value.trim();
-    var rename = isDriveConnected() && newName && newName !== item.name;
 
-    setBusy(els.driveEditSubmit, true, "جارٍ الحفظ…");
-    Store.saveLibraryMeta(item.id, payload).then(function () {
-      if (!rename) return null;
-      return driveJson(DRIVE_API + "/" + encodeURIComponent(item.id) + "?fields=id,name", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json; charset=UTF-8" },
-        body: JSON.stringify({ name: newName })
+    setBusy(els.librarySubmitBtn, true, file ? "جارٍ رفع الملف…" : "جارٍ الحفظ…");
+
+    var chain;
+    if (file) {
+      els.libraryProgress.hidden = false;
+      els.libraryBar.style.width = "0%";
+      els.libraryStatus.textContent = "جارٍ رفع الملف…";
+      chain = uploadLibraryFile(file, function (percent) {
+        els.libraryBar.style.width = percent + "%";
+        els.libraryStatus.textContent = "جارٍ رفع الملف… " + percent + "%";
+      }).then(function (result) {
+        payload.url = result.secure_url;
+        payload.fileName = result.original_filename || file.name;
+        payload.fileType = file.type || "";
+        payload.fileSize = result.bytes || file.size;
+        els.libraryStatus.textContent = "اكتمل الرفع، جارٍ حفظ البيانات…";
       });
-    }).then(function () {
-      UI.closeDialog(els.driveEditDialog);
-      UI.showToast(rename ? "تم حفظ الوصف وتحديث اسم الملف في الدرايف." : "تم حفظ بيانات الملف وأصبحت الأوصاف محدثة.", "success");
-      state.editingDriveItem = null;
-      setBusy(els.driveEditSubmit, false);
-      var folder = currentAdminFolder();
-      if (folder) loadAdminFolder(folder.id);
-      notifyLibraryChanged();
-    }).catch(function (error) {
-      console.error(error);
-      UI.showToast(driveFriendlyError(error), "error");
-      setBusy(els.driveEditSubmit, false);
-      var folder = currentAdminFolder();
-      if (folder) loadAdminFolder(folder.id);
-    });
-  }
-
-  function openDriveUpload() {
-    if (!isDriveConnected()) {
-      UI.showToast("اربط حساب Google أولًا لتتمكن من رفع الملفات.", "error");
-      return;
+    } else {
+      chain = Promise.resolve();
     }
-    var folder = currentAdminFolder();
-    els.driveUploadForm.reset();
-    els.driveUploadProgress.hidden = true;
-    els.driveUploadBar.style.width = "0%";
-    els.driveUploadStatus.textContent = "جارٍ تجهيز الرفع…";
-    els.driveUploadTarget.textContent = folder
-      ? "سيتم الرفع إلى: " + folder.name
-      : "سيتم الرفع إلى المجلد الحالي في مكتبة المدرسة.";
-    setSubmitLabel(els.driveUploadSubmit, "رفع الملفات");
-    UI.openDialog(els.driveUploadDialog);
-    window.setTimeout(function () { els.driveUploadFiles.focus(); }, 80);
-  }
-
-  function uploadDriveFile(file, folderId, onProgress) {
-    var metadata = { name: file.name, parents: [folderId] };
-    return driveAuthorizedFetch(DRIVE_UPLOAD_API + "?uploadType=resumable&fields=id,name,mimeType,size,modifiedTime,thumbnailLink", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json; charset=UTF-8",
-        "X-Upload-Content-Type": file.type || "application/octet-stream",
-        "X-Upload-Content-Length": String(file.size)
-      },
-      body: JSON.stringify(metadata)
-    }).then(function (response) {
-      var location = response.headers.get("Location");
-      if (!location) throw new Error("تعذر بدء جلسة رفع الملف. حاول مرة أخرى.");
-      return new Promise(function (resolve, reject) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("PUT", location, true);
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-        xhr.upload.onprogress = function (event) {
-          if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
-        };
-        xhr.onload = function () {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              resolve(JSON.parse(xhr.responseText || "{}"));
-            } catch (error) {
-              resolve({ name: file.name });
-            }
-          } else {
-            reject(new Error("تعذر رفع الملف (" + xhr.status + "). تحقق من الصلاحيات وحجم الملف."));
-          }
-        };
-        xhr.onerror = function () {
-          reject(new Error("تعذر الاتصال أثناء رفع الملف."));
-        };
-        xhr.send(file);
-      });
-    });
-  }
-
-  function submitDriveUpload(event) {
-    event.preventDefault();
-    if (!els.driveUploadForm.reportValidity()) return;
-    if (!isDriveConnected()) {
-      UI.showToast("انتهت جلسة Google. أعد ربط الدرايف ثم حاول مرة أخرى.", "error");
-      return;
-    }
-    var files = Array.prototype.slice.call(els.driveUploadFiles.files || []);
-    if (!files.length) {
-      UI.showToast("اختر ملفًا واحدًا على الأقل.", "error");
-      return;
-    }
-    var folder = currentAdminFolder();
-    if (!folder) {
-      UI.showToast("اختر مجلدًا داخل المكتبة أولًا.", "error");
-      return;
-    }
-
-    var description = els.driveUploadDescription.value.trim();
-    var category = els.driveUploadCategory.value.trim();
-    var total = files.length;
-    var chain = Promise.resolve();
-
-    setBusy(els.driveUploadSubmit, true, "جارٍ الرفع…");
-    els.driveUploadProgress.hidden = false;
-    els.driveUploadBar.style.width = "0%";
-
-    files.forEach(function (file, index) {
-      chain = chain.then(function () {
-        els.driveUploadStatus.textContent = "جارٍ رفع " + file.name + " (" + (index + 1) + " من " + total + ")…";
-        return uploadDriveFile(file, folder.id, function (ratio) {
-          var overall = ((index + ratio) / total) * 100;
-          els.driveUploadBar.style.width = Math.round(overall) + "%";
-        }).then(function (uploadedFile) {
-          if (!uploadedFile || !uploadedFile.id) return null;
-          return Store.saveLibraryMeta(uploadedFile.id, {
-            title: "",
-            description: description,
-            category: category
-          });
-        });
-      });
-    });
 
     chain.then(function () {
-      els.driveUploadBar.style.width = "100%";
-      els.driveUploadStatus.textContent = "تم رفع الملفات بنجاح.";
-      UI.closeDialog(els.driveUploadDialog);
-      UI.showToast("تم رفع " + formatCount(total) + " ملف إلى مكتبة الدرايف.", "success");
-      setBusy(els.driveUploadSubmit, false);
-      state.editingDriveItem = null;
-      var current = currentAdminFolder();
-      if (current) loadAdminFolder(current.id);
-      notifyLibraryChanged();
-    }).catch(function (error) {
-      console.error(error);
-      UI.showToast(driveFriendlyError(error), "error");
-      setBusy(els.driveUploadSubmit, false);
-      var current = currentAdminFolder();
-      if (current) loadAdminFolder(current.id);
-    });
-  }
-
-  function openDriveFolderDialog() {
-    if (!isDriveConnected()) {
-      UI.showToast("اربط حساب Google أولًا لتتمكن من إنشاء مجلد.", "error");
-      return;
-    }
-    els.driveFolderForm.reset();
-    setSubmitLabel(els.driveFolderSubmit, "إنشاء المجلد");
-    UI.openDialog(els.driveFolderDialog);
-    window.setTimeout(function () { els.driveFolderName.focus(); }, 80);
-  }
-
-  function submitDriveFolder(event) {
-    event.preventDefault();
-    if (!els.driveFolderForm.reportValidity()) return;
-    if (!isDriveConnected()) {
-      UI.showToast("انتهت جلسة Google. أعد ربط الدرايف ثم حاول مرة أخرى.", "error");
-      return;
-    }
-    var folder = currentAdminFolder();
-    if (!folder) {
-      UI.showToast("اختر مجلدًا داخل المكتبة أولًا.", "error");
-      return;
-    }
-    var name = els.driveFolderName.value.trim();
-    var description = els.driveFolderDescription.value.trim();
-
-    setBusy(els.driveFolderSubmit, true, "جارٍ الإنشاء…");
-    driveJson(DRIVE_API + "?fields=id,name,mimeType,size,modifiedTime", {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=UTF-8" },
-      body: JSON.stringify({ name: name, mimeType: FOLDER_MIME, parents: [folder.id] })
-    }).then(function (created) {
-      return Store.saveLibraryMeta(created.id, {
-        title: name,
-        description: description,
-        category: ""
-      }).then(function () { return created; });
+      if (!payload.fileName && payload.url) {
+        var parts = payload.url.split("?")[0].split("/");
+        payload.fileName = decodeURIComponent(parts[parts.length - 1] || "ملف المكتبة");
+      }
+      return Store.saveLibraryEntry(payload, state.editingLibraryId);
     }).then(function () {
-      UI.closeDialog(els.driveFolderDialog);
-      UI.showToast("تم إنشاء المجلد داخل مكتبة الدرايف.", "success");
-      setBusy(els.driveFolderSubmit, false);
-      var current = currentAdminFolder();
-      if (current) loadAdminFolder(current.id);
-      notifyLibraryChanged();
+      UI.closeDialog(els.libraryFormDialog);
+      UI.showToast(file ? "تم رفع الملف وإضافته إلى المكتبة." : (isEditing ? "تم حفظ تعديلات الملف." : "تمت إضافة الملف إلى المكتبة."));
+      state.editingLibraryId = null;
+      state.libraryFile = null;
+      state.libraryExistingUrl = "";
+      state.libraryExistingFile = null;
+      els.libraryProgress.hidden = true;
+      setBusy(els.librarySubmitBtn, false);
     }).catch(function (error) {
       console.error(error);
-      UI.showToast(driveFriendlyError(error), "error");
-      setBusy(els.driveFolderSubmit, false);
+      UI.showToast(error && error.message ? error.message : friendlyError(error), "error");
+      setBusy(els.librarySubmitBtn, false);
     });
   }
 
-  function requestDriveDelete(item) {
+  function requestLibraryDelete(id) {
+    var item = state.library.find(function (entry) { return entry.id === id; });
     if (!item) return;
-    if (!isDriveConnected()) {
-      UI.showToast("اربط حساب Google أولًا لتتمكن من الحذف.", "error");
-      return;
-    }
-    state.deleteTarget = { type: "drive", item: item };
-    var name = driveDisplayName(item);
-    els.confirmMessage.textContent = item.mimeType === FOLDER_MIME
-      ? "هل تريد حذف المجلد «" + name + "» وكل ما يحتويه من ملفات ومجلدات نهائيًا من الدرايف؟"
-      : "هل تريد حذف «" + name + "» نهائيًا من الدرايف؟";
+    state.deleteTarget = { type: "library", id: id };
+    els.confirmMessage.textContent = "هل تريد حذف «" + (item.title || "هذا الملف") + "» من المكتبة؟ سيختفي من الموقع فورًا. الملف المرفوع يبقى محفوظًا في حساب Cloudinary.";
     UI.openDialog(els.confirmDialog);
-  }
-
-  function deleteDriveRecursive(item) {
-    var deletedIds = [];
-    function deleteFile(id) {
-      return driveAuthorizedFetch(DRIVE_API + "/" + encodeURIComponent(id), { method: "DELETE" })
-        .then(function () { deletedIds.push(id); });
-    }
-    function removeNode(node) {
-      if (node.mimeType !== FOLDER_MIME) return deleteFile(node.id);
-      return listAllDriveChildren(node.id).then(function (children) {
-        return children.reduce(function (chain, child) {
-          return chain.then(function () { return removeNode(child); });
-        }, Promise.resolve());
-      }).then(function () {
-        return deleteFile(node.id);
-      });
-    }
-    return removeNode(item).then(function () { return deletedIds; });
   }
 
   function populatePresets() {
@@ -1383,56 +850,32 @@
     els.addNewsBtn.addEventListener("click", function () { openNewsForm(null); });
     els.addAnnouncementBtn.addEventListener("click", function () { openAnnouncementForm(null); });
 
-    els.driveConnectBtn.addEventListener("click", connectDrive);
-    els.driveDisconnectBtn.addEventListener("click", function () { disconnectDrive(false); });
-    els.driveAdminRefresh.addEventListener("click", function () {
-      var folder = currentAdminFolder();
-      if (folder) loadAdminFolder(folder.id);
-    });
-    els.driveAdminUpload.addEventListener("click", openDriveUpload);
-    els.driveAdminFolder.addEventListener("click", openDriveFolderDialog);
+    els.addLibraryBtn.addEventListener("click", function () { openLibraryForm(null); });
 
-    els.driveAdminCrumbs.addEventListener("click", function (event) {
-      var crumb = event.target.closest("[data-admin-crumb]");
-      if (!crumb) return;
-      navigateAdminCrumb(Number(crumb.getAttribute("data-admin-crumb")));
-    });
-
-    els.adminDriveList.addEventListener("click", function (event) {
-      var retry = event.target.closest("[data-drive-admin-retry]");
-      if (retry) {
-        var current = currentAdminFolder();
-        if (current) loadAdminFolder(current.id);
-        return;
-      }
-      var open = event.target.closest("[data-open-admin-drive]");
-      if (open) {
-        var folderItem = state.driveAdmin.items.find(function (entry) {
-          return entry.id === open.getAttribute("data-open-admin-drive");
-        });
-        openAdminFolder(folderItem);
-        return;
-      }
-      var edit = event.target.closest("[data-edit-admin-drive]");
+    els.libraryList.addEventListener("click", function (event) {
+      var edit = event.target.closest("[data-edit-library]");
       if (edit) {
-        var editItem = state.driveAdmin.items.find(function (entry) {
-          return entry.id === edit.getAttribute("data-edit-admin-drive");
-        });
-        openDriveEdit(editItem);
+        var id = edit.getAttribute("data-edit-library");
+        var item = state.library.find(function (entry) { return entry.id === id; });
+        if (item) openLibraryForm(item);
         return;
       }
-      var remove = event.target.closest("[data-delete-admin-drive]");
-      if (remove) {
-        var deleteItem = state.driveAdmin.items.find(function (entry) {
-          return entry.id === remove.getAttribute("data-delete-admin-drive");
-        });
-        requestDriveDelete(deleteItem);
+      var remove = event.target.closest("[data-delete-library]");
+      if (remove) requestLibraryDelete(remove.getAttribute("data-delete-library"));
+    });
+
+    els.libraryFile.addEventListener("change", function () {
+      var file = els.libraryFile.files && els.libraryFile.files[0];
+      state.libraryFile = file || null;
+      if (file) {
+        els.libraryFileNote.textContent = "سيتم رفع: " + file.name + " (" + formatBytes(file.size) + ")";
+        els.libraryUrl.value = "";
+      } else {
+        els.libraryFileNote.textContent = "اختر ملفًا لرفعه عند الحفظ، أو استخدم الرابط المباشر بالأسفل.";
       }
     });
 
-    els.driveUploadForm.addEventListener("submit", submitDriveUpload);
-    els.driveFolderForm.addEventListener("submit", submitDriveFolder);
-    els.driveEditForm.addEventListener("submit", saveDriveEdit);
+    els.libraryForm.addEventListener("submit", submitLibraryForm);
 
     els.newsList.addEventListener("click", function (event) {
       var edit = event.target.closest("[data-edit-news]");
@@ -1578,10 +1021,8 @@
       var target = state.deleteTarget;
       setBusy(els.confirmDeleteBtn, true, "جارٍ الحذف…");
       var request;
-      if (target.type === "drive") {
-        request = deleteDriveRecursive(target.item).then(function (deletedIds) {
-          return Store.deleteLibraryMeta(deletedIds).catch(function () { return null; });
-        });
+      if (target.type === "library") {
+        request = Store.deleteLibraryEntry(target.id);
       } else if (target.type === "news") {
         request = Store.deleteNews(target.id);
       } else {
@@ -1589,11 +1030,8 @@
       }
       request.then(function () {
         UI.closeDialog(els.confirmDialog);
-        if (target.type === "drive") {
-          UI.showToast("تم حذف العنصر من مكتبة الدرايف.", "success");
-          var folder = currentAdminFolder();
-          if (folder) loadAdminFolder(folder.id);
-          notifyLibraryChanged();
+        if (target.type === "library") {
+          UI.showToast("تم حذف الملف من المكتبة.");
         } else {
           UI.showToast(target.type === "news" ? "تم حذف الخبر من الموقع." : "تم حذف الإعلان من المكتبة.");
         }
@@ -1601,7 +1039,7 @@
         setBusy(els.confirmDeleteBtn, false);
       }).catch(function (error) {
         console.error(error);
-        UI.showToast(target.type === "drive" ? driveFriendlyError(error) : friendlyError(error), "error");
+        UI.showToast(friendlyError(error), "error");
         setBusy(els.confirmDeleteBtn, false);
       });
     });
@@ -1614,10 +1052,10 @@
       Store.saveSettings({
         instagram: els.settingInstagram.value.trim(),
         twitter: els.settingTwitter.value.trim(),
-        libraryDrive: els.settingDrive.value.trim(),
-        driveClientId: els.settingDriveClientId.value.trim()
+        cloudinaryCloud: els.settingCloudinaryCloud.value.trim(),
+        cloudinaryPreset: els.settingCloudinaryPreset.value.trim()
       }).then(function () {
-        UI.showToast("تم حفظ إعدادات البوابة وستظهر الروابط فورًا للزوار.");
+        UI.showToast("تم حفظ إعدادات البوابة، وأصبح رفع الملفات جاهزًا إن اكتملت بيانات Cloudinary.");
         setBusy(els.saveSettingsBtn, false);
       }).catch(function (error) {
         console.error(error);
@@ -1679,42 +1117,22 @@
       statMode: document.getElementById("statMode"),
       addNewsBtn: document.getElementById("addNewsBtn"),
       addAnnouncementBtn: document.getElementById("addAnnouncementBtn"),
-      driveConnectBtn: document.getElementById("driveConnectBtn"),
-      driveDisconnectBtn: document.getElementById("driveDisconnectBtn"),
-      driveConnectState: document.getElementById("driveConnectState"),
-      driveConnectTitle: document.getElementById("driveConnectTitle"),
-      driveConnectText: document.getElementById("driveConnectText"),
-      driveConnectBadge: document.getElementById("driveConnectBadge"),
-      driveAdminCrumbs: document.getElementById("driveAdminCrumbs"),
-      driveAdminRefresh: document.getElementById("driveAdminRefresh"),
-      driveAdminFolder: document.getElementById("driveAdminFolder"),
-      driveAdminUpload: document.getElementById("driveAdminUpload"),
-      driveAdminStatus: document.getElementById("driveAdminStatus"),
-      adminDriveList: document.getElementById("adminDriveList"),
-      driveUploadDialog: document.getElementById("driveUploadDialog"),
-      driveUploadForm: document.getElementById("driveUploadForm"),
-      driveUploadTarget: document.getElementById("driveUploadTarget"),
-      driveUploadFiles: document.getElementById("driveUploadFiles"),
-      driveUploadDescription: document.getElementById("driveUploadDescription"),
-      driveUploadCategory: document.getElementById("driveUploadCategory"),
-      driveUploadProgress: document.getElementById("driveUploadProgress"),
-      driveUploadBar: document.getElementById("driveUploadBar"),
-      driveUploadStatus: document.getElementById("driveUploadStatus"),
-      driveUploadSubmit: document.getElementById("driveUploadSubmit"),
-      driveFolderDialog: document.getElementById("driveFolderDialog"),
-      driveFolderForm: document.getElementById("driveFolderForm"),
-      driveFolderName: document.getElementById("driveFolderName"),
-      driveFolderDescription: document.getElementById("driveFolderDescription"),
-      driveFolderSubmit: document.getElementById("driveFolderSubmit"),
-      driveEditDialog: document.getElementById("driveEditDialog"),
-      driveEditForm: document.getElementById("driveEditForm"),
-      driveEditSub: document.getElementById("driveEditSub"),
-      driveEditTitleInput: document.getElementById("driveEditTitleInput"),
-      driveEditDescription: document.getElementById("driveEditDescription"),
-      driveEditCategory: document.getElementById("driveEditCategory"),
-      driveEditFileField: document.getElementById("driveEditFileField"),
-      driveEditDriveName: document.getElementById("driveEditDriveName"),
-      driveEditSubmit: document.getElementById("driveEditSubmit"),
+      addLibraryBtn: document.getElementById("addLibraryBtn"),
+      libraryList: document.getElementById("adminLibraryList"),
+      libraryFormDialog: document.getElementById("libraryFormDialog"),
+      libraryForm: document.getElementById("libraryForm"),
+      libraryFormTitle: document.getElementById("libraryFormTitle"),
+      libraryFormSub: document.getElementById("libraryFormSub"),
+      librarySubmitBtn: document.getElementById("librarySubmitBtn"),
+      libraryTitle: document.getElementById("libraryTitle"),
+      libraryDescription: document.getElementById("libraryDescription"),
+      libraryCategory: document.getElementById("libraryCategory"),
+      libraryFile: document.getElementById("libraryFile"),
+      libraryFileNote: document.getElementById("libraryFileNote"),
+      libraryUrl: document.getElementById("libraryUrl"),
+      libraryProgress: document.getElementById("libraryProgress"),
+      libraryBar: document.getElementById("libraryBar"),
+      libraryStatus: document.getElementById("libraryStatus"),
       adminNewsList: document.getElementById("adminNewsList"),
       adminAnnouncementsList: document.getElementById("adminAnnouncementsList"),
       newsList: document.getElementById("adminNewsList"),
@@ -1750,15 +1168,14 @@
       settingsForm: document.getElementById("settingsForm"),
       settingInstagram: document.getElementById("settingInstagram"),
       settingTwitter: document.getElementById("settingTwitter"),
-      settingDrive: document.getElementById("settingDrive"),
-      settingDriveClientId: document.getElementById("settingDriveClientId"),
+      settingCloudinaryCloud: document.getElementById("settingCloudinaryCloud"),
+      settingCloudinaryPreset: document.getElementById("settingCloudinaryPreset"),
       saveSettingsBtn: document.getElementById("saveSettingsBtn")
     };
 
     els.demoPassHint.textContent = String(config.adminPasscode || "farooq2026");
     populatePresets();
     bind();
-    updateDriveConnectUI();
     Store.subscribeAuth(handleAuth);
   }
 

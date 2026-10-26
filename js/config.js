@@ -11,16 +11,12 @@ window.SITE_CONFIG = {
     appId: "1:42136719658:web:cf7f8a6c85da6a8bdf4e53"
   },
 
-  driveApiKey: "AIzaSyChsOavx0HH2WVaQpDCOgURx6Jxl-5-tdY",
-  driveClientId: "",
-
   defaults: {
     schoolUrl: "https://alfarooqom.com/",
     ministryUrl: "https://www.moe.gov.om/",
     visionUrl: "https://www.vision2040.gov.om/",
     instagram: "",
-    twitter: "",
-    libraryDrive: "https://drive.google.com/drive/folders/1dKSMPTkD43ZEgsJNzqumd26A1sS7YP_H"
+    twitter: ""
   },
 
   newsPresets: [
