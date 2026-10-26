@@ -617,7 +617,7 @@
     var item = state.library.find(function (entry) { return entry.id === id; });
     if (!item) return;
     state.deleteTarget = { type: "library", id: id };
-    els.confirmMessage.textContent = "هل تريد حذف «" + (item.title || "هذا الملف") + "» من المكتبة؟ سيختفي من الموقع فورًا. الملف المرفوع يبقى محفوظًا في حساب Cloudinary.";
+    els.confirmMessage.textContent = "هل تريد حذف «" + (item.title || "هذا الملف") + "» من المكتبة؟ سيختفي من الموقع فورًا. إذا كان الملف مرفوعًا إلى Cloudinary فسيبقى محفوظًا هناك.";
     UI.openDialog(els.confirmDialog);
   }
 
