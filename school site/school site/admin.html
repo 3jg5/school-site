@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="لوحة إدارة محتوى موقع مدرسة الفاروق — إدارة الأخبار وإعلانات المكتبة والإعدادات.">
+  <meta name="theme-color" content="#052f25">
+  <meta name="robots" content="noindex, nofollow">
+  <title>لوحة الإدارة | مدرسة الفاروق</title>
+  <link rel="icon" type="image/png" href="assets/logos/favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="admin-body">
+  <a class="skip-link" href="#mainContent">انتقل إلى المحتوى الرئيسي</a>
+
+  <div class="topbar">
+    <div class="container topbar__inner">
+      <div class="topbar__state">
+        <span>مدرسة الفاروق <span aria-hidden="true">—</span> لوحة إدارة المحتوى</span>
+      </div>
+      <div class="topbar__links">
+        <a href="index.html">العودة إلى الموقع</a>
+        <span class="topbar__sep" aria-hidden="true"></span>
+        <span class="mode-pill" data-mode-pill>نسخة تجريبية</span>
+      </div>
+    </div>
+  </div>
+
+  <main id="mainContent" class="admin-page">
+    <section class="admin-login" id="loginScreen" aria-labelledby="loginTitle">
+      <div class="login-wrap">
+        <img class="login-logo" src="assets/logos/farooq-logo.png" alt="شعار مدرسة الفاروق" width="84" height="84">
+        <span class="login-kicker">
+          <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+          قسم الإدارة
+        </span>
+
+        <div class="login-card">
+          <h1 id="loginTitle">دخول إدارة المدرسة</h1>
+          <p class="login-sub" id="loginSub">أدخل كلمة مرور الإدارة للوصول إلى أدوات نشر الأخبار وإدارة المكتبة.</p>
+
+          <form id="loginForm" autocomplete="on">
+            <div class="field" id="emailField" hidden>
+              <label for="adminEmail">بريد حساب الإدارة</label>
+              <div class="password-wrap">
+                <svg class="icon" aria-hidden="true"><use href="#i-mail"></use></svg>
+                <input id="adminEmail" name="email" type="email" placeholder="admin@example.com" dir="ltr" autocomplete="username" inputmode="email">
+              </div>
+            </div>
+            <div class="field">
+              <label for="adminPass" id="adminPassLabel">كلمة مرور الإدارة</label>
+              <div class="password-wrap">
+                <svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg>
+                <input id="adminPass" name="password" type="password" placeholder="••••••••" required autocomplete="current-password">
+              </div>
+            </div>
+            <div class="login-error" id="loginError" role="alert">كلمة المرور غير صحيحة. حاول مرة أخرى.</div>
+            <button class="btn btn--green btn--block" id="loginSubmitBtn" type="submit">
+              <svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg>
+              <span id="loginBtnLabel">دخول لوحة الإدارة</span>
+            </button>
+          </form>
+
+          <p class="login-hint" id="demoLoginHint">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+            <span>نسخة تجريبية: كلمة المرور الحالية <strong id="demoPassHint">farooq2026</strong>. قبل النشر الرسمي يُنصح بتفعيل Firebase Authentication وضبط صلاحيات الكتابة.</span>
+          </p>
+          <p class="login-hint login-hint--cloud" id="cloudLoginHint" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+            <span>يتم التحقق من الحساب عبر خدمة المصادقة في Firebase. حسابات الإدارة تُنشأ من وحدة تحكم Firebase فقط، ولا توجد صفحة تسجيل عامة.</span>
+          </p>
+        </div>
+
+        <a class="login-back" href="index.html">
+          <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+          العودة إلى الموقع الرئيسي
+        </a>
+      </div>
+    </section>
+
+    <div class="admin-shell" id="adminShell">
+      <header class="admin-top">
+        <div class="container admin-top__inner">
+          <div class="admin-brand">
+            <img src="assets/logos/farooq-logo.png" alt="" aria-hidden="true">
+            <div>
+              <strong>لوحة إدارة المحتوى</strong>
+              <small>مدرسة الفاروق — البوابة الرسمية</small>
+            </div>
+          </div>
+          <div class="admin-top__actions">
+            <span class="admin-user" id="adminUser" hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-mail"></use></svg>
+              <span id="adminUserEmail"></span>
+            </span>
+            <a class="btn" href="index.html" target="_blank" rel="noopener" aria-label="عرض الموقع">
+              <svg class="icon" aria-hidden="true"><use href="#i-external"></use></svg>
+              <span>عرض الموقع</span>
+            </a>
+            <button class="btn" id="logoutBtn" type="button" aria-label="تسجيل الخروج">
+              <svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg>
+              <span>تسجيل الخروج</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="admin-main">
+        <div class="container">
+          <div class="admin-head">
+            <div>
+              <span class="admin-head__kicker">
+                <svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+                لوحة الإدارة
+              </span>
+              <h1>إدارة محتوى الموقع</h1>
+              <p>أضف الأخبار والإعلانات، وأدر ملفات المكتبة والروابط، وستظهر التغييرات مباشرة لجميع الزوار.</p>
+            </div>
+            <div class="admin-head__status">
+              <span class="badge" id="connectionBadge">جارٍ الاتصال…</span>
+              <button class="btn btn--ghost btn--sm" id="seedButton" type="button" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+                تعبئة محتوى تجريبي
+              </button>
+            </div>
+          </div>
+
+          <div class="notice" id="demoNotice">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+            <span>أنت في وضع العرض التجريبي. تُحفظ التعديلات مؤقتًا وتتزامن بين النوافذ المفتوحة، لكنها لا تُحفظ بعد إغلاق الموقع. أضف إعدادات Firebase في ملف <code>js/config.js</code> لتفعيل الحفظ السحابي الدائم.</span>
+          </div>
+
+          <div class="notice notice--error" id="syncError" role="alert">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+            <span id="syncErrorText">تعذر الاتصال بالسحابة.</span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-news"></use></svg></span>
+              <div class="stat-card__value" id="statNews">—</div>
+              <div class="stat-card__label">الأخبار المنشورة</div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg></span>
+              <div class="stat-card__value" id="statAnnouncements">—</div>
+              <div class="stat-card__label">إعلانات المكتبة</div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></span>
+              <div class="stat-card__value stat-card__value--text" id="statUpdated">—</div>
+              <div class="stat-card__label">آخر تحديث</div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__icon"><svg class="icon" aria-hidden="true"><use href="#i-cloud"></use></svg></span>
+              <div class="stat-card__value stat-card__value--text" id="statMode">—</div>
+              <div class="stat-card__label">حالة البيانات</div>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist" aria-label="أقسام لوحة الإدارة">
+            <button class="tab is-active" id="tabNews" type="button" role="tab" aria-selected="true" aria-controls="panelNews" data-tab="news">
+              <svg class="icon" aria-hidden="true"><use href="#i-news"></use></svg>
+              أخبار المدرسة
+            </button>
+            <button class="tab" id="tabAnnouncements" type="button" role="tab" aria-selected="false" aria-controls="panelAnnouncements" data-tab="announcements">
+              <svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg>
+              إعلانات المكتبة
+            </button>
+            <button class="tab" id="tabLibrary" type="button" role="tab" aria-selected="false" aria-controls="panelLibrary" data-tab="library">
+              <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+              مكتبة الملفات
+            </button>
+            <button class="tab" id="tabSettings" type="button" role="tab" aria-selected="false" aria-controls="panelSettings" data-tab="settings">
+              <svg class="icon" aria-hidden="true"><use href="#i-link"></use></svg>
+              إعدادات البوابة
+            </button>
+          </div>
+
+          <section class="panel is-active" id="panelNews" role="tabpanel" aria-labelledby="tabNews">
+            <div class="panel-card">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>أخبار المدرسة</h2>
+                  <p>تُنشر التعديلات فورًا على الصفحة الرئيسية.</p>
+                </div>
+                <div class="panel-toolbar__actions">
+                  <button class="btn btn--green btn--sm" id="addNewsBtn" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                    إضافة خبر جديد
+                  </button>
+                </div>
+              </div>
+              <div class="panel-list" id="adminNewsList">
+                <div class="admin-empty">
+                  <span class="spinner" aria-hidden="true"></span>
+                  <h3>جارٍ تحميل الأخبار</h3>
+                  <p>يتم جلب المحتوى من قاعدة البيانات.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="panelAnnouncements" role="tabpanel" aria-labelledby="tabAnnouncements" hidden>
+            <div class="panel-card">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>إعلانات المكتبة</h2>
+                  <p>تظهر مباشرة في صفحات المكتبة الإلكترونية.</p>
+                </div>
+                <div class="panel-toolbar__actions">
+                  <button class="btn btn--green btn--sm" id="addAnnouncementBtn" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                    إضافة إعلان جديد
+                  </button>
+                </div>
+              </div>
+              <div class="panel-list" id="adminAnnouncementsList">
+                <div class="admin-empty">
+                  <span class="spinner" aria-hidden="true"></span>
+                  <h3>جارٍ تحميل الإعلانات</h3>
+                  <p>يتم جلب المحتوى من قاعدة البيانات.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="panelLibrary" role="tabpanel" aria-labelledby="tabLibrary" hidden>
+            <div class="panel-card">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>مكتبة الملفات</h2>
+                  <p>أضف ملفات من جهازك مع عنوان ووصف وتصنيف، وستظهر لزوار المكتبة فورًا.</p>
+                </div>
+                <div class="panel-toolbar__actions">
+                  <button class="btn btn--green btn--sm" id="addLibraryBtn" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                    إضافة ملف
+                  </button>
+                </div>
+              </div>
+              <div class="panel-list" id="adminLibraryList" aria-live="polite">
+                <div class="admin-empty">
+                  <span class="spinner" aria-hidden="true"></span>
+                  <h3>جارٍ تحميل ملفات المكتبة</h3>
+                  <p>يتم جلب المحتوى من قاعدة البيانات.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="panelSettings" role="tabpanel" aria-labelledby="tabSettings" hidden>
+            <div class="panel-card">
+              <div class="panel-toolbar">
+                <div>
+                  <h2>إعدادات البوابة</h2>
+                  <p>روابط الحسابات الرسمية وإعدادات رفع ملفات المكتبة.</p>
+                </div>
+              </div>
+              <form class="settings-form" id="settingsForm">
+                <div class="field">
+                  <label for="settingInstagram">رابط حساب إنستغرام</label>
+                  <input id="settingInstagram" type="url" placeholder="https://www.instagram.com/…" dir="ltr">
+                  <span class="field__hint">يظهر في بوابة المواقع ضمن خيارات مدرسة الفاروق.</span>
+                </div>
+                <div class="field">
+                  <label for="settingTwitter">رابط حساب تويتر (X)</label>
+                  <input id="settingTwitter" type="url" placeholder="https://x.com/…" dir="ltr">
+                  <span class="field__hint">سيُفعَّل زر الحساب تلقائيًا بعد الحفظ.</span>
+                </div>
+                <div class="field">
+                  <label for="settingCloudinaryCloud">اسم الحساب في Cloudinary (Cloud name)</label>
+                  <input id="settingCloudinaryCloud" type="text" placeholder="farooq-school" dir="ltr" autocomplete="off" spellcheck="false">
+                  <span class="field__hint">من لوحة Cloudinary ← Dashboard. يُستخدم لتخزين ملفات المكتبة التي ترفعها من اللوحة.</span>
+                </div>
+                <div class="field">
+                  <label for="settingCloudinaryPreset">اسم الرفع غير الموقّع (Unsigned upload preset)</label>
+                  <input id="settingCloudinaryPreset" type="text" placeholder="ml_default" dir="ltr" autocomplete="off" spellcheck="false">
+                  <span class="field__hint">من Cloudinary ← Settings ← Upload ← Add upload preset، واختر Signing Mode: Unsigned. بعد حفظه هنا يعمل زر رفع الملفات.</span>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn--green btn--sm" type="submit" id="saveSettingsBtn">
+                    <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+                    حفظ الإعدادات
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <p class="admin-credit">تطوير الموقع: علي محمد الرحمة — Ali Mohammed Al Rahma</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="newsFormDialog" aria-labelledby="newsFormTitle">
+    <div class="modal modal--form">
+      <div class="modal__head">
+        <div class="modal__head-copy">
+          <span class="modal__eyebrow">
+            <svg class="icon" aria-hidden="true"><use href="#i-news"></use></svg>
+            محتوى الأخبار
+          </span>
+          <h2 class="modal__title" id="newsFormTitle">إضافة خبر جديد</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج الخبر">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </div>
+
+      <form id="newsForm">
+        <div class="modal__body">
+          <div class="form-grid">
+            <div class="field field--full">
+              <label for="newsTitle">عنوان الخبر</label>
+              <input id="newsTitle" name="title" type="text" maxlength="160" required placeholder="مثال: مدرسة الفاروق تحقق إنجازًا جديدًا">
+            </div>
+
+            <div class="field">
+              <label for="newsCategory">التصنيف</label>
+              <select id="newsCategory" name="category">
+                <option value="إنجازات">إنجازات</option>
+                <option value="فعاليات">فعاليات</option>
+                <option value="رياضة">رياضة</option>
+                <option value="إعلانات">إعلانات</option>
+                <option value="عام">عام</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="newsDate">تاريخ النشر</label>
+              <input id="newsDate" name="date" type="date" required>
+            </div>
+
+            <div class="field field--full">
+              <label for="newsSummary">ملخص الخبر</label>
+              <textarea id="newsSummary" name="summary" rows="2" maxlength="500" required placeholder="سطران يظهران في بطاقة الخبر بالصفحة الرئيسية."></textarea>
+            </div>
+
+            <div class="field field--full">
+              <label for="newsBody">نص الخبر</label>
+              <textarea id="newsBody" name="body" rows="6" maxlength="8000" placeholder="اكتب تفاصيل الخبر هنا. يمكنك فصل الفقرات بسطر جديد."></textarea>
+            </div>
+
+            <div class="field field--full">
+              <span class="field__label">صورة الخبر <span class="field__hint">(اختياري)</span></span>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="newsImagePreset">صورة جاهزة</label>
+                  <select id="newsImagePreset">
+                    <option value="">بدون صورة جاهزة</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="newsImageUrl">أو رابط صورة</label>
+                  <input id="newsImageUrl" type="url" placeholder="https://example.com/image.jpg" dir="ltr">
+                </div>
+              </div>
+
+              <div class="file-field">
+                <input class="file-input-hidden" id="newsImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+                <label class="btn btn--ghost btn--sm" for="newsImageFile">
+                  <svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg>
+                  رفع صورة من الجهاز
+                </label>
+                <button class="btn btn--ghost btn--sm" id="removeImageBtn" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg>
+                  إزالة الصورة
+                </button>
+              </div>
+              <span class="field__hint">تُضغط الصورة تلقائيًا قبل حفظها سحابيًا. يُفضّل صورة أفقية لا تتجاوز 10 ميجابايت.</span>
+
+              <div class="image-preview">
+                <img id="newsImagePreviewImg" alt="معاينة صورة الخبر" hidden>
+                <span class="image-preview__empty" id="newsImagePreviewEmpty">
+                  <svg class="icon" aria-hidden="true"><use href="#i-image"></use></svg>
+                </span>
+                <span class="image-preview__note" id="newsImagePreviewNote">لم يتم اختيار صورة بعد.</span>
+              </div>
+            </div>
+
+            <div class="field field--full">
+              <label class="checkbox">
+                <input id="newsPinned" type="checkbox">
+                تثبيت الخبر في مقدمة الصفحة الرئيسية
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__foot">
+          <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>إلغاء</button>
+          <button class="btn btn--green btn--sm" type="submit" id="newsSubmitBtn">نشر الخبر</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="announcementFormDialog" aria-labelledby="announcementFormTitle">
+    <div class="modal modal--form">
+      <div class="modal__head">
+        <div class="modal__head-copy">
+          <span class="modal__eyebrow">
+            <svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg>
+            إعلانات المكتبة
+          </span>
+          <h2 class="modal__title" id="announcementFormTitle">إضافة إعلان جديد</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج الإعلان">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </div>
+
+      <form id="announcementForm">
+        <div class="modal__body">
+          <div class="form-grid">
+            <div class="field field--full">
+              <label for="announcementTitle">عنوان الإعلان</label>
+              <input id="announcementTitle" name="title" type="text" maxlength="160" required placeholder="مثال: تحديث جدول الحصص الأسبوعي">
+            </div>
+
+            <div class="field">
+              <label for="announcementDate">تاريخ الإعلان</label>
+              <input id="announcementDate" name="date" type="date" required>
+            </div>
+
+            <div class="field">
+              <label for="announcementLink">رابط ملف الإعلان <span class="field__hint">(اختياري)</span></label>
+              <input id="announcementLink" name="link" type="url" placeholder="https://…" dir="ltr">
+            </div>
+
+            <div class="field field--full">
+              <label for="announcementBody">تفاصيل الإعلان</label>
+              <textarea id="announcementBody" name="body" rows="5" maxlength="2500" required placeholder="اكتب نص الإعلان وتفاصيل الملف المرفق."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__foot">
+          <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>إلغاء</button>
+          <button class="btn btn--green btn--sm" type="submit" id="announcementSubmitBtn">نشر الإعلان</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <datalist id="libraryCategories">
+    <option value="وثيقة رسمية"></option>
+    <option value="دليل"></option>
+    <option value="لائحة"></option>
+    <option value="نموذج"></option>
+    <option value="قرار"></option>
+    <option value="تعميم"></option>
+    <option value="كتاب"></option>
+    <option value="ورقة عمل"></option>
+    <option value="نشاط"></option>
+    <option value="صورة"></option>
+    <option value="عام"></option>
+  </datalist>
+
+  <dialog id="libraryFormDialog" aria-labelledby="libraryFormTitle">
+    <div class="modal modal--form">
+      <div class="modal__head">
+        <div class="modal__head-copy">
+          <span class="modal__eyebrow">
+            <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+            مكتبة الملفات
+          </span>
+          <h2 class="modal__title" id="libraryFormTitle">إضافة ملف إلى المكتبة</h2>
+          <p class="modal__sub" id="libraryFormSub">سيظهر الملف في صفحة المكتبة فور الحفظ.</p>
+        </div>
+        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نموذج الملف">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </div>
+
+      <form id="libraryForm">
+        <div class="modal__body">
+          <div class="form-grid">
+            <div class="field field--full">
+              <label for="libraryTitle">عنوان الملف</label>
+              <input id="libraryTitle" type="text" maxlength="180" required placeholder="مثال: دليل أولياء الأمور 2026">
+            </div>
+            <div class="field field--full">
+              <label for="libraryDescription">الوصف</label>
+              <textarea id="libraryDescription" rows="4" maxlength="1600" placeholder="وصف مختصر يظهر للزوار تحت عنوان الملف."></textarea>
+            </div>
+            <div class="field">
+              <label for="libraryCategory">التصنيف <span class="field__hint">(اختياري)</span></label>
+              <input id="libraryCategory" type="text" list="libraryCategories" maxlength="40" placeholder="مثال: دليل">
+            </div>
+            <div class="field field--full">
+              <label for="libraryFile">الملف من جهازك <span class="field__hint">(حتى 10 ميجابايت)</span></label>
+              <input class="drive-file-input" id="libraryFile" type="file">
+              <span class="field__hint" id="libraryFileNote">اختر ملفًا لرفعه عند الحفظ، أو استخدم الرابط المباشر بالأسفل.</span>
+            </div>
+            <div class="field field--full">
+              <label for="libraryUrl">أو رابط مباشر للملف <span class="field__hint">(اختياري)</span></label>
+              <input id="libraryUrl" type="url" placeholder="https://…" dir="ltr">
+            </div>
+          </div>
+          <div class="upload-progress" id="libraryProgress" hidden>
+            <div class="upload-progress__track"><span class="upload-progress__bar" id="libraryBar"></span></div>
+            <p class="upload-progress__text" id="libraryStatus">جارٍ تجهيز الرفع…</p>
+          </div>
+        </div>
+        <div class="modal__foot">
+          <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>إلغاء</button>
+          <button class="btn btn--green btn--sm" type="submit" id="librarySubmitBtn">حفظ الملف</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <div class="modal modal--small">
+      <div class="modal__head">
+        <div class="modal__head-copy">
+          <span class="modal__eyebrow">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+            إجراء مهم
+          </span>
+          <h2 class="modal__title" id="confirmTitle">تأكيد الحذف</h2>
+        </div>
+        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق نافذة التأكيد">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <p id="confirmMessage" style="margin:0;color:var(--muted);font-size:0.86rem;line-height:1.9;">هل تريد حذف هذا المحتوى؟</p>
+      </div>
+      <div class="modal__foot">
+        <button class="btn btn--ghost btn--sm" type="button" data-close-dialog>تراجع</button>
+        <button class="btn btn--danger btn--sm" type="button" id="confirmDeleteBtn">حذف نهائي</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/icons.js" defer></script>
+  <script src="js/store.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/admin.js" defer></script>
+</body>
+</html>
