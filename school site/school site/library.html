@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="المكتبة الإلكترونية لمدرسة الفاروق — ملفات المدرسة ومرفقاتها الرسمية تُعرض داخل الموقع مع معاينة مباشرة وإعلانات محدّثة.">
+  <meta name="theme-color" content="#052f25">
+  <title>المكتبة الإلكترونية | مدرسة الفاروق</title>
+  <link rel="icon" type="image/png" href="assets/logos/favicon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#mainContent">انتقل إلى المحتوى الرئيسي</a>
+
+  <div class="topbar">
+    <div class="container topbar__inner">
+      <div class="topbar__state">
+        <span>سلطنة عُمان <span aria-hidden="true">—</span> وزارة التربية والتعليم</span>
+      </div>
+      <div class="topbar__links">
+        <a class="topbar__optional" href="https://www.moe.gov.om/" target="_blank" rel="noopener" data-link="ministry">بوابة الوزارة</a>
+        <a class="topbar__optional" href="https://www.vision2040.gov.om/" target="_blank" rel="noopener" data-link="vision">رؤية عُمان 2040</a>
+        <span class="topbar__sep" aria-hidden="true"></span>
+        <a href="admin.html">دخول الإدارة</a>
+        <span class="mode-pill" data-mode-pill>نسخة تجريبية</span>
+      </div>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container header__inner">
+      <a class="brand" href="index.html" aria-label="مدرسة الفاروق - الصفحة الرئيسية">
+        <img class="brand__logo" src="assets/logos/farooq-logo.png" alt="شعار مدرسة الفاروق" width="50" height="50">
+        <span class="brand__text">
+          <strong>مدرسة الفاروق</strong>
+          <small>البوابة الرسمية للتعليم الإلكتروني</small>
+        </span>
+      </a>
+
+      <nav class="site-nav" id="siteNav" aria-label="التنقل الرئيسي">
+        <a href="index.html">الرئيسية</a>
+        <a href="index.html#news">أخبار المدرسة</a>
+        <a href="library.html" class="is-active" aria-current="page">المكتبة الإلكترونية</a>
+        <a href="index.html#portals">بوابة المواقع</a>
+        <a href="admin.html">قسم الإدارة</a>
+      </nav>
+
+      <a class="btn btn--ghost header__cta" href="index.html">
+        <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>
+        الموقع الرئيسي
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="siteNav" aria-label="فتح قائمة التنقل">
+        <svg class="icon" aria-hidden="true"><use href="#i-menu"></use></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="mainContent">
+    <section class="page-hero" aria-labelledby="libraryTitle">
+      <div class="container page-hero__inner">
+        <div class="breadcrumb">
+          <a href="index.html">الرئيسية</a>
+          <svg class="icon" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+          <span>المكتبة الإلكترونية</span>
+        </div>
+        <h1 id="libraryTitle">المكتبة الإلكترونية للفاروق</h1>
+        <p>
+          مكتبة رقمية تضم ملفات المدرسة ووثائقها، مع معاينة داخل الموقع وبحث سريع،
+          ولوحة إعلانات محدّثة من إدارة المدرسة.
+        </p>
+        <div class="page-hero__stats">
+          <span class="hero-stat">
+            <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+            <span id="libraryFileCount">جارٍ تحميل محتوى المكتبة…</span>
+          </span>
+          <span class="hero-stat">
+            <span class="sync-dot" aria-hidden="true"></span>
+            تُحدَّث تلقائيًا من الإدارة
+          </span>
+          <span class="hero-stat">
+            <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+            <span id="libraryLastUpdate">آخر تحديث: —</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="library-drive" aria-labelledby="librarySectionTitle">
+      <div class="container">
+        <div class="drive-panel">
+          <div class="drive-head">
+            <div>
+              <span class="section__kicker">محتوى المكتبة</span>
+              <h2 id="librarySectionTitle">ملفات ومرفقات المكتبة</h2>
+              <p class="drive-head__desc">تصفّح ملفات المكتبة، واعرض أي وثيقة مباشرة داخل الصفحة أو حمّلها.</p>
+            </div>
+            <span class="drive-sync">
+              <span class="sync-dot" aria-hidden="true"></span>
+              تُحدَّث تلقائيًا
+            </span>
+          </div>
+
+          <div class="drive-toolbar">
+            <div class="drive-tools drive-tools--end">
+              <label class="search-field search-field--compact">
+                <span class="sr-only">ابحث في ملفات المكتبة</span>
+                <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                <input id="librarySearch" type="search" placeholder="ابحث في الملفات…" autocomplete="off">
+              </label>
+            </div>
+          </div>
+
+          <div class="drive-status" id="libraryStatus" aria-live="polite">جارٍ تحميل محتوى المكتبة…</div>
+
+          <div class="drive-grid" id="libraryGrid" aria-live="polite">
+            <div class="drive-skeleton" aria-hidden="true"></div>
+            <div class="drive-skeleton" aria-hidden="true"></div>
+            <div class="drive-skeleton" aria-hidden="true"></div>
+            <div class="drive-skeleton" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="library-main" aria-labelledby="boardTitle">
+      <div class="container">
+        <div class="library-layout">
+          <div class="library-panel">
+            <div class="data-alert" id="libraryAlert" role="alert">
+              <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+              <span id="libraryAlertText">تعذر الاتصال بالسحابة.</span>
+            </div>
+
+            <div class="library-toolbar">
+              <div class="library-toolbar__title">
+                <h2 id="boardTitle">لوحة الإعلانات</h2>
+                <span class="library-toolbar__count" id="boardCount"></span>
+              </div>
+              <label class="search-field">
+                <span class="sr-only">ابحث في إعلانات المكتبة</span>
+                <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                <input id="announcementSearch" type="search" placeholder="ابحث في الإعلانات…" autocomplete="off">
+              </label>
+            </div>
+
+            <div class="announcements" id="announcementsList" aria-live="polite">
+              <div class="library-empty">
+                <span class="spinner" aria-hidden="true"></span>
+                <h3>جارٍ تحميل إعلانات المكتبة</h3>
+                <p>يتم الآن جلب أحدث الإعلانات من إدارة المدرسة.</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="library-side" aria-label="روابط ومعلومات المكتبة">
+            <div class="side-card side-card--green">
+              <div class="side-card__inner">
+                <h3>
+                  <svg class="icon" aria-hidden="true"><use href="#i-folder"></use></svg>
+                  مكتبة المدرسة
+                </h3>
+                <p>ملفات المكتبة المعتمدة تُعرض داخل الموقع مع وصف لكل ملف، وتظهر الملفات الجديدة فور إضافتها من إدارة المدرسة.</p>
+                <span class="drive-note">
+                  <svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>
+                  <span>المصدر: إدارة المدرسة</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="side-card">
+              <h3>
+                <svg class="icon" aria-hidden="true"><use href="#i-globe"></use></svg>
+                روابط رسمية
+              </h3>
+              <div class="side-links">
+                <a class="side-link" href="https://www.moe.gov.om/" target="_blank" rel="noopener" data-link="ministry">
+                  وزارة التربية والتعليم
+                  <svg class="icon" aria-hidden="true"><use href="#i-external"></use></svg>
+                </a>
+                <a class="side-link" href="https://www.vision2040.gov.om/" target="_blank" rel="noopener" data-link="vision">
+                  رؤية عُمان 2040
+                  <svg class="icon" aria-hidden="true"><use href="#i-external"></use></svg>
+                </a>
+                <a class="side-link" href="index.html#portals">
+                  بوابة مواقع المدرسة
+                  <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
+                </a>
+              </div>
+            </div>
+
+            <div class="side-card">
+              <h3>
+                <svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg>
+                عن المكتبة
+              </h3>
+              <p>
+                تُدار هذه المساحة من إدارة المدرسة. تُضاف ملفات المكتبة الرسمية من لوحة الإدارة مع وصف لكل ملف،
+                وتُضاف إعلانات الإدارة في اللوحة أدناه.
+              </p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <div class="footer__brand">
+            <img src="assets/logos/farooq-logo.png" alt="شعار مدرسة الفاروق" width="52" height="52">
+            <div>
+              <strong>مدرسة الفاروق</strong>
+              <small>البوابة الرسمية للتعليم الإلكتروني</small>
+            </div>
+          </div>
+          <p class="footer__about">
+            المكتبة الإلكترونية لمدرسة الفاروق: إعلانات وملفات وروابط تعليمية تُحدَّث مباشرة من إدارة المدرسة.
+          </p>
+          <p class="footer__note">تُحدَّث ملفات المكتبة وإعلاناتها من لوحة الإدارة، وتُعرض الملفات داخل الموقع مباشرة.</p>
+        </div>
+
+        <div class="footer__col">
+          <h4 class="footer__heading">روابط سريعة</h4>
+          <div class="footer__links">
+            <a href="index.html">الصفحة الرئيسية</a>
+            <a href="index.html#news">أخبار المدرسة</a>
+            <a href="library.html">المكتبة الإلكترونية</a>
+            <a href="index.html#portals">بوابة المواقع</a>
+            <a href="admin.html">قسم الإدارة</a>
+          </div>
+        </div>
+
+        <div class="footer__col footer__col--developer">
+          <h4 class="footer__heading">تطوير الموقع</h4>
+          <div class="developer-card">
+            <span class="developer-card__label">
+              <svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+              تصميم وتطوير
+            </span>
+            <p class="developer-card__name">علي محمد الرحمة</p>
+            <p class="developer-card__en">Ali Mohammed Al Rahma</p>
+            <p class="developer-card__role">تطوير الواجهات وتجربة المستخدم والربط السحابي</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <span>© <span data-year>2026</span> مدرسة الفاروق — جميع الحقوق محفوظة.</span>
+        <span class="mode-pill" data-mode-pill>نسخة تجريبية</span>
+        <span>جميع الشعارات الرسمية معتمدة من الجهات المختصة.</span>
+      </div>
+    </div>
+  </footer>
+
+  <dialog id="libraryPreviewDialog" aria-labelledby="libraryPreviewTitle">
+    <div class="modal">
+      <div class="modal__head">
+        <div class="modal__head-copy">
+          <span class="modal__eyebrow">
+            <svg class="icon" aria-hidden="true"><use href="#i-book-open"></use></svg>
+            معاينة من مكتبة الفاروق
+          </span>
+          <h2 class="modal__title" id="libraryPreviewTitle">معاينة الملف</h2>
+          <p class="modal__sub" id="libraryPreviewMeta"></p>
+        </div>
+        <button class="modal__close" type="button" data-close-dialog aria-label="إغلاق المعاينة">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </div>
+      <div class="modal__body modal__body--flush drive-preview__body">
+        <div class="drive-preview__frame">
+          <iframe id="libraryPreviewFrame" title="معاينة الملف" allow="autoplay" allowfullscreen></iframe>
+          <img id="libraryPreviewImage" alt="" hidden>
+          <div class="drive-preview__fallback" id="libraryPreviewFallback" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-file"></use></svg>
+            <p>هذا النوع من الملفات لا يُعرض داخل الصفحة. استخدم زر التحميل أدناه.</p>
+          </div>
+          <div class="drive-preview__loading" id="libraryPreviewLoading">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>جارٍ تحميل المعاينة…</span>
+          </div>
+        </div>
+        <div class="drive-preview__foot">
+          <span class="drive-preview__note">
+            <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+            ملف معتمد من إدارة المدرسة.
+          </span>
+          <div class="drive-preview__actions">
+            <a class="btn btn--sm btn--ghost" id="libraryPreviewDownload" href="#" target="_blank" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+              تحميل الملف
+            </a>
+            <button class="btn btn--sm btn--ghost" type="button" data-close-dialog>
+              <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+              إغلاق
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/icons.js" defer></script>
+  <script src="js/store.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/library.js" defer></script>
+</body>
+</html>
